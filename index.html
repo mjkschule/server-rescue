@@ -8,7 +8,7 @@
 <title>Server-Rescue – Brüche Escape-Game</title>
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <script src="vendor/katex/katex.min.js"></script>
-<script src="levels.js"></script>
+<script src="levels.js?v=3"></script>
 <style>
 :root{
   --bg:#0b1220; --bg2:#0f1a2e; --panel:#15213a; --panel2:#1b2a48; --line:#2b3d63;
@@ -320,10 +320,23 @@ function subst(x, vars) {
   if (x && typeof x === "object") { const o = {}; for (const k in x) o[k] = subst(x[k], vars); return o; }
   return x;
 }
+function varValid(v, base, sig) {
+  if (v.sig && v.sig !== sig) return false;
+  if (base.variants ? !(Number.isInteger(v.vi) && v.vi >= 0 && v.vi < base.variants.length) : v.vi !== undefined) return false;
+  const cards = base.variants ? (base.variants[v.vi].cards || base.cards) : base.cards;
+  const needPick = !!(cards && base.pick && base.pick < cards.length);
+  if (needPick !== !!v.cards) return false;
+  if (v.cards && !v.cards.every(i => Number.isInteger(i) && i >= 0 && i < cards.length)) return false;
+  return true;
+}
 function chooseVariant(lv, pz, force) {
-  const key = lv + "-" + pz, base = LEVELS[lv].puzzles[pz];
+  const key = lv + "-" + pz, base = LEVELS[lv].puzzles[pz], sig = base.type + "|" + base.title;
+  const old = S.vars[key];
+  if (old && force === undefined && !varValid(old, base, sig)) {   // Spielstand aus älterer Version
+    delete S.vars[key]; delete S.solved[key]; delete S.series[key];
+  }
   if (!S.vars[key] || force !== undefined) {
-    const v = {};
+    const v = { sig };
     if (base.variants) v.vi = force !== undefined ? force : rnd(0, base.variants.length - 1);
     const cards = base.variants ? (base.variants[v.vi].cards || base.cards) : base.cards;
     const pick = base.pick;
@@ -535,7 +548,17 @@ function renderPuzzle(app) {
     </div>
     <aside class="card side" id="side"></aside>
   </div>`;
-  COMP[P.type].render($("#pbody"), P, h);
+  try {
+    if (!COMP[P.type]) throw new Error("Unbekannter Rätsel-Typ " + P.type);
+    COMP[P.type].render($("#pbody"), P, h);
+  } catch (err) {
+    console.warn("Rätsel konnte nicht angezeigt werden:", err);
+    delete S.vars[P.key]; delete S.series[P.key]; save();
+    $("#pbody").innerHTML = `<p class="task">⚠ Dieses Rätsel konnte nicht geladen werden.</p>
+      <p>Wahrscheinlich ist noch eine ältere Version des Spiels im Speicher. Dein Fortschritt bleibt erhalten.</p>
+      <div class="row"><button class="btn primary" onclick="location.reload()">↻ Seite neu laden</button></div>`;
+    return;
+  }
   renderSide(P);
   if (solved) showSolved(P, h >= 3);
 }

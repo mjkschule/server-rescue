@@ -494,6 +494,22 @@ def test_full_run(browser):
     ctx.close()
 
 
+def test_old_savegame(browser):
+    print("\n   Spielstand aus älterer Version (anderes Rätsel an gleicher Stelle)")
+    ctx = browser.new_context(viewport={"width": 1180, "height": 820})
+    pg = ctx.new_page(); attach(pg); pg.goto(URL)
+    pg.evaluate("""()=>localStorage.setItem('serverRescue.v1', JSON.stringify({v:1,name:'Alt',mode:'team',sound:false,phase:'puzzle',lv:4,pz:4,
+       vars:{'4-4':{cards:[0,2,3,5,6]},'0-0':{vi:9},'2-1':{vi:1}},hints:{},solved:{'4-4':true,'2-1':true},series:{},done:[0,1,2,3],pwOk:false,bonusDone:false,startedAt:1}))""")
+    pg.reload(); pg.click("#go"); pg.wait_for_timeout(200)
+    ok("Altes Sortier-Rätsel → neues Rätsel wird angezeigt", pg.locator("#pbody .piece").count() == 5)
+    ok("Veralteter „gelöst“-Haken wird entfernt", not pg.evaluate("!!__game.S.solved['4-4']"))
+    ok("Gültige alte Variante (ohne Kennung) bleibt erhalten, gelöst bleibt gelöst",
+       pg.evaluate("(()=>{__game.getPuzzle(2,1);return __game.S.vars['2-1'].vi===1 && !!__game.S.solved['2-1']})()"))
+    ok("Ungültige Variantennummer wird neu gewählt", pg.evaluate("(()=>{const P=__game.getPuzzle(0,0);return !!P.answer})()"))
+    solve_ui(pg, P_(pg)); ok("Neues Rätsel danach lösbar", solved(pg))
+    ctx.close()
+
+
 def test_storage_blocked(browser):
     print("\n   Ohne localStorage (privater Modus) spielbar")
     ctx = browser.new_context()
@@ -524,6 +540,7 @@ def main():
         test_touch(browser)
         test_teacher(pg)
         test_full_run(browser)
+        test_old_savegame(browser)
         test_storage_blocked(browser)
         browser.close()
     print("\n10) Konsole und Netzwerk")
