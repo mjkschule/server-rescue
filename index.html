@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'">
+<title>Server-Rescue – Brüche Escape-Game</title>
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<script src="vendor/katex/katex.min.js"></script>
+<script src="levels.js"></script>
+<style>
+:root{
+  --bg:#0b1220; --bg2:#0f1a2e; --panel:#15213a; --panel2:#1b2a48; --line:#2b3d63;
+  --text:#eef3fb; --muted:#b4c2db; --blue:#4cc3ff; --blue-d:#1f8fd1; --orange:#ffab40; --orange-d:#e08a12;
+  --cell:#22324f; --cellline:#3b5584; --radius:14px;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:18px;line-height:1.45;-webkit-text-size-adjust:100%}
+body{min-height:100vh;background-image:linear-gradient(rgba(76,195,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(76,195,255,.045) 1px,transparent 1px);background-size:28px 28px}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:disabled{cursor:default;opacity:.45}
+#app{max-width:1180px;margin:0 auto;padding:16px clamp(14px,3vw,32px) 40px}
+h1,h2,h3{margin:.2em 0 .4em;line-height:1.2}
+.muted{color:var(--muted)}
+.katex{font-size:1.12em}
+b .katex{font-weight:normal}
+
+/* Bausteine */
+.logo{display:flex;align-items:center;gap:12px;user-select:none;-webkit-user-select:none;min-height:44px;background:none;border:0;padding:0;text-align:left}
+.logo .px{display:grid;grid-template-columns:repeat(4,9px);gap:2px}
+.logo .px i{width:9px;height:9px;background:var(--panel2);display:block}
+.logo .px i.b{background:var(--blue)} .logo .px i.o{background:var(--orange)}
+.logo b{font-family:var(--mono);letter-spacing:.1em;font-size:1rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.btn{min-height:48px;padding:10px 22px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);font-weight:600}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#06121f}
+.btn.primary:hover:not(:disabled){background:#7ad3ff}
+.btn.orange{background:var(--orange);border-color:var(--orange);color:#1a1000}
+.btn.ghost{background:transparent}
+.btn.small{min-height:44px;padding:6px 14px;font-size:.95rem}
+:focus-visible{outline:3px solid var(--orange);outline-offset:3px}
+.tag{display:inline-block;font-family:var(--mono);font-size:.8rem;letter-spacing:.08em;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.term{font-family:var(--mono);color:var(--blue)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.center{justify-content:center}
+
+/* Topbar */
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;justify-content:space-between;margin-bottom:16px}
+.levels{display:flex;gap:6px;align-items:center}
+.lv{min-width:40px;height:30px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+.lv.done{background:var(--blue);border-color:var(--blue);color:#06121f}
+.lv.now{border-color:var(--orange);color:var(--text);box-shadow:0 0 0 3px rgba(255,171,64,.25)}
+.lv.secret{border-style:dashed}
+.stars{display:flex;gap:3px;font-size:1.5rem;line-height:1}
+.star{color:var(--orange)} .star.lost{color:transparent;-webkit-text-stroke:1.5px var(--muted)}
+.frags{font-family:var(--mono);display:flex;gap:5px}
+.frags span{padding:4px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);min-width:38px;text-align:center;color:var(--muted)}
+.frags span.got{border-color:var(--blue);color:var(--blue)}
+.iconbtn{min-width:44px;min-height:44px;border-radius:99px;border:2px solid var(--line);background:transparent;padding:4px 12px}
+
+/* Start */
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:start;margin-top:8px}
+.hero h1{font-family:var(--mono);font-size:clamp(2rem,4.4vw,3rem);letter-spacing:.06em;color:var(--blue);text-shadow:0 0 18px rgba(76,195,255,.35)}
+.story p{margin:.45em 0}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 18px}
+.mode{text-align:left;padding:14px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);min-height:92px}
+.mode[aria-pressed="true"]{border-color:var(--blue);box-shadow:0 0 0 3px rgba(76,195,255,.25)}
+.mode b{display:block} .mode small{color:var(--muted);font-size:.9rem}
+label.lbl{display:block;font-weight:600;margin-bottom:6px}
+input.txt{width:100%;min-height:50px;padding:10px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg2);color:var(--text);font:inherit}
+input.txt:focus{outline:none;border-color:var(--blue)}
+.teamhint{margin-top:12px;padding:10px 14px;border-left:4px solid var(--orange);background:rgba(255,171,64,.08);border-radius:6px;font-size:.95rem}
+
+/* Rätsel-Layout */
+.puzzle{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:start}
+.task{font-size:1.12rem;font-weight:600;margin:.6em 0}
+.side h3{font-size:.95rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--mono);margin-top:0}
+.hints{display:flex;flex-direction:column;gap:10px}
+.hintbtn{display:flex;justify-content:space-between;align-items:center;text-align:left;width:100%;min-height:52px;padding:10px 14px;border-radius:12px;border:2px dashed var(--line);background:transparent}
+.hintbtn .cost{font-family:var(--mono);font-size:.85rem;color:var(--orange);white-space:nowrap;margin-left:10px}
+.hintbtn.open{border-style:solid;border-color:var(--orange);background:rgba(255,171,64,.06)}
+.hintbtn.confirm{border-style:solid;border-color:var(--orange);background:rgba(255,171,64,.18)}
+.hinttext{padding:8px 14px;border-left:3px solid var(--orange);font-size:.98rem}
+.infobox{font-size:.95rem;color:var(--muted);margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.feedback{margin-top:14px;padding:12px 14px;border-radius:10px;display:none;gap:10px;align-items:flex-start}
+.feedback.show{display:flex}
+.feedback.hint{background:rgba(255,171,64,.10);border:2px solid var(--orange)}
+.feedback.good{background:rgba(76,195,255,.10);border:2px solid var(--blue)}
+.feedback .ic{font-size:1.35rem;line-height:1.2}
+.success{margin-top:14px;padding:14px;border-radius:12px;border:2px solid var(--blue);background:rgba(76,195,255,.08)}
+.success ul{margin:.4em 0 0;padding-left:1.2em;font-size:.95rem}
+.teamline{font-size:.92rem;color:var(--muted);margin:.2em 0 .6em}
+
+/* Figuren */
+.fig{display:flex;justify-content:center;margin:10px 0}
+.fig svg{max-width:100%;height:auto}
+.figrow{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;align-items:flex-end}
+.figrow figure{margin:0;text-align:center}
+.figrow figcaption{font-size:.9rem;color:var(--muted)}
+.legend{font-size:.88rem;color:var(--muted);text-align:center}
+.strips12{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;max-width:520px;margin:8px auto}
+
+/* Eingaben */
+.ifrac{display:inline-flex;flex-direction:column;align-items:center;gap:6px;vertical-align:middle;margin:0 6px}
+.ifrac .bar{width:100%;min-width:70px;height:4px;background:var(--text);border-radius:2px}
+.num{width:3.4em;height:56px;text-align:center;font-family:var(--mono);font-size:1.6rem;background:var(--bg2);color:var(--text);border:2px solid var(--blue-d);border-radius:10px}
+.num:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,171,64,.3)}
+.num.bad{border-color:var(--orange);border-style:dashed}
+.fixed{display:inline-flex;align-items:center;justify-content:center;min-width:2.2em;height:56px;font-family:var(--mono);font-size:1.6rem}
+.expr{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;font-size:1.25rem;margin:12px 0}
+.expr .katex{font-size:1.5em}
+.lockwrap{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:8px 0}
+.lockside{font-size:.85rem;color:var(--muted);text-align:right;line-height:1.2}
+.stepper{display:inline-flex;align-items:center;gap:6px}
+.stepper button{width:44px;height:44px;border-radius:10px;border:2px solid var(--line);background:var(--panel2);font-size:1.3rem;font-weight:700}
+.gaprow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;font-size:1.1rem}
+.gaprow .num{height:50px;font-size:1.4rem}
+
+/* Auswahl */
+.step{margin-top:14px}
+.step .q{font-weight:600;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;min-height:52px;padding:10px 14px;border-radius:12px;border:2px solid var(--line);background:var(--panel2)}
+.opt.ok{border-color:var(--blue);background:rgba(76,195,255,.14)}
+.opt.ok::before{content:"✔ ";color:var(--blue);font-weight:700}
+.opt.no{border-style:dashed;opacity:.75}
+.opt.no::before{content:"✘ ";color:var(--orange);font-weight:700}
+.step.locked{opacity:.5}
+
+/* Drag & Drop */
+.tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:76px;padding:12px;border-radius:12px;border:2px dashed var(--line);background:var(--bg2)}
+.bins{display:grid;gap:10px;margin-top:12px}
+.bin{min-height:120px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);padding:8px;display:flex;flex-direction:column;gap:8px}
+.bin.over,.bin.target{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,171,64,.25)}
+.bin .bl{font-weight:700;text-align:center;font-size:1rem;padding:4px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.bin .slot{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.dcard{min-width:56px;min-height:56px;padding:8px 10px;border-radius:10px;border:2px solid var(--blue-d);background:var(--panel);touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center;text-align:center;font-size:.95rem;max-width:260px}
+.dcard.txt{max-width:330px;text-align:left}
+.dcard.sel{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,171,64,.35)}
+.dcard.fixedok{border-color:var(--blue);background:rgba(76,195,255,.12);cursor:default}
+.dcard.fixedok::after{content:"✔";margin-left:6px;color:var(--blue);font-weight:700}
+.dcard.ghost{position:fixed;z-index:50;pointer-events:none;opacity:.92;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.dcard.dragging{opacity:.35}
+.dcard svg{width:84px;height:auto;pointer-events:none}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.shake{animation:shake .3s 2}
+
+/* Ordnen */
+.ordslots{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin:12px 0;min-height:70px}
+.ordslot{min-width:64px;min-height:64px;border-radius:10px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;background:var(--bg2)}
+.ordslot.filled{border-style:solid;border-color:var(--blue-d)}
+.lt{font-size:1.4rem;color:var(--muted)}
+
+/* Färben */
+.grid{display:grid;gap:5px;margin:10px auto;padding:10px;border-radius:12px;background:var(--bg2);border:1px solid var(--line)}
+.cell{aspect-ratio:1;min-width:44px;min-height:44px;border-radius:6px;border:2px solid var(--cellline);background:var(--cell);padding:0}
+.cell.on{background:var(--blue);border-color:#9fe0ff;background-image:repeating-linear-gradient(-45deg,rgba(0,0,0,.18) 0 4px,transparent 4px 9px)}
+.cell.piece{background:var(--orange);border-color:#ffd59a;background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.18) 0 4px,transparent 4px 9px);cursor:default}
+.counter{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap}
+
+/* Verfeinern */
+.rstrip{width:100%;max-width:560px;margin:8px auto;display:block}
+.slider{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;margin:8px 0}
+.slider input[type=range]{width:min(320px,70vw);height:44px;accent-color:var(--blue)}
+.seg{display:inline-flex;flex-wrap:wrap;border:2px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{min-height:44px;min-width:52px;border:0;border-right:1px solid var(--line);background:transparent;padding:6px 12px;font-family:var(--mono)}
+.seg button[aria-pressed="true"]{background:var(--blue);color:#06121f;font-weight:700}
+.warnline{color:var(--orange);font-size:.95rem;text-align:center;min-height:1.4em}
+
+/* Serie */
+.progress{display:flex;gap:6px;justify-content:center;margin:6px 0 4px}
+.progress i{width:28px;height:10px;border-radius:5px;background:var(--panel2);border:1px solid var(--line)}
+.progress i.on{background:var(--blue);border-color:var(--blue)}
+
+/* Explore */
+.cmp{display:flex;align-items:center;justify-content:center;gap:12px;font-size:1.3rem;margin:6px 0}
+.cmp .sign{font-size:2rem;color:var(--orange);font-weight:800;min-width:1.2em;text-align:center}
+
+/* Level-Screens */
+.big{max-width:760px;margin:20px auto;text-align:center}
+.big h1{font-family:var(--mono);color:var(--blue);letter-spacing:.06em}
+.fragbig{display:inline-block;font-family:var(--mono);font-size:2.6rem;letter-spacing:.2em;padding:12px 26px;border-radius:14px;border:3px solid var(--blue);color:var(--blue);margin:14px 0;text-shadow:0 0 16px rgba(76,195,255,.6)}
+.glitchmsg{font-family:var(--mono);text-align:left;background:#0a0f1a;border:1px solid var(--line);border-radius:10px;padding:14px 16px;color:#cfe6ff;margin:14px 0}
+.glitchmsg .who{color:var(--orange)}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.pop{animation:pop .45s ease-out}
+.pwslots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0}
+.pwslot{min-width:80px;min-height:56px;border-radius:10px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:1.4rem;letter-spacing:.1em}
+.pwslot.filled{border-style:solid;border-color:var(--blue);color:var(--blue)}
+.pwfrag{min-width:80px;min-height:56px;font-family:var(--mono);font-size:1.4rem;letter-spacing:.1em}
+
+/* Urkunde */
+.cert{max-width:860px;margin:10px auto;background:#fbfaf6;color:#18233a;border-radius:18px;padding:36px clamp(18px,5vw,56px);border:10px solid var(--panel2);box-shadow:0 0 0 2px var(--blue),0 20px 60px rgba(0,0,0,.45);text-align:center}
+.cert .pxrow{display:flex;justify-content:center;gap:4px;margin-bottom:8px}
+.cert .pxrow i{width:12px;height:12px;background:#1f8fd1} .cert .pxrow i:nth-child(3n){background:#e08a12}
+.cert h2{font-family:var(--mono);letter-spacing:.14em;font-size:clamp(1.5rem,3.5vw,2.1rem);margin:.2em 0}
+.cert .who{font-size:clamp(1.8rem,4.4vw,2.6rem);font-weight:800;margin:.25em 0;border-bottom:2px solid #c9d3e6;display:inline-block;padding:0 24px 4px;word-break:break-word}
+.rank{display:inline-flex;align-items:center;gap:12px;margin:16px 0 6px;padding:10px 22px;border-radius:99px;background:#18233a;color:#fff;font-weight:800;font-size:1.2rem}
+.medal{width:34px;height:34px;border-radius:50%;border:3px solid #fff;flex:none}
+.medal.bronze{background:radial-gradient(circle at 35% 35%,#f3c49a,#9a5a2a)}
+.medal.silver{background:radial-gradient(circle at 35% 35%,#ffffff,#8d99ad)}
+.medal.gold{background:radial-gradient(circle at 35% 35%,#ffe2a8,#e08a12)}
+.medal.legend{background:conic-gradient(#4cc3ff,#ffab40,#4cc3ff,#ffab40,#4cc3ff)}
+.cert .stars{justify-content:center;font-size:1.9rem;margin:6px 0;flex-wrap:wrap}
+.cert .star{color:#e08a12} .cert .star.lost{color:transparent;-webkit-text-stroke:1.5px #8a96ad}
+.certgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px;text-align:left}
+.certgrid div{border-top:2px solid #c9d3e6;padding-top:6px;font-size:.95rem}
+.certgrid b{display:block;font-size:1.1rem}
+.code{font-family:var(--mono);letter-spacing:.12em}
+.badge{display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:4px 12px;border-radius:99px;border:2px dashed #1f8fd1;color:#1f6fa3;font-weight:700;font-size:.95rem}
+.certmsg{max-width:560px;margin:10px auto 0;font-size:1.05rem}
+.certactions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:22px}
+.cert .btn{color:#fff} .cert .btn.primary{color:#06121f}
+
+/* Lehrkraft */
+.overlay{position:fixed;inset:0;background:rgba(5,9,18,.82);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto}
+.modal{background:var(--panel);border:2px solid var(--orange);border-radius:16px;padding:22px;width:min(980px,100%);margin:auto}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button[aria-pressed="true"]{background:var(--orange);color:#1a1000;border-color:var(--orange)}
+.sol{border-top:1px solid var(--line);padding:8px 0;font-size:.95rem}
+.sol .cur{color:var(--orange);font-family:var(--mono);font-size:.8rem}
+table.t{border-collapse:collapse;width:100%;font-size:.95rem}
+table.t td,table.t th{border:1px solid var(--line);padding:6px 8px;text-align:left}
+
+@media (max-width:900px){
+  .hero,.puzzle{grid-template-columns:1fr}
+  .certgrid{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){.pop,.shake{animation:none}}
+@media print{
+  body{background:#fff}
+  #app>*:not(.certwrap){display:none!important}
+  .certactions,.overlay{display:none!important}
+  .cert{box-shadow:none;border-color:#18233a;margin:0 auto}
+}
+</style>
+</head>
+<body>
+<main id="app" aria-live="off"></main>
+
+<script>
+"use strict";
+/* =====================================================================
+   SERVER-RESCUE – Spiel-Engine. Inhalte stehen in levels.js.
+   ===================================================================== */
+const SAVE_KEY = "serverRescue.v1";
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pickOne = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fval = s => { const [a, b] = String(s).split("/").map(Number); return a / b; };
+const eqFrac = (a, b, c, d) => a * d === b * c;
+
+/* ---------- Mathe-Darstellung ---------- */
+function tex(t) { try { return katex.renderToString(t, { throwOnError: false }); } catch (e) { return esc(t); } }
+function md(s) {
+  if (s == null) return "";
+  return String(s).split(/(\[\[[^\]]+\]\]|\$[^$]+\$)/g).map(part => {
+    if (part.startsWith("[[") && part.endsWith("]]")) { const [a, b] = part.slice(2, -2).split("/"); return tex(`\\dfrac{${a}}{${b}}`); }
+    if (part.length > 1 && part[0] === "$" && part.endsWith("$")) return tex(part.slice(1, -1));
+    return esc(part).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  }).join("");
+}
+const F = (a, b) => tex(`\\dfrac{${a}}{${b}}`);
+
+/* ---------- Spielstand (nur lokal) ---------- */
+function freshState() {
+  return { v: 1, name: "", mode: "team", sound: false, phase: "start", lv: 0, pz: 0,
+    vars: {}, hints: {}, solved: {}, series: {}, done: [], pwOk: false, bonusDone: false, startedAt: null, finishedAt: null };
+}
+let S = freshState();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* privat/gesperrt: Spiel läuft ohne Speichern */ } }
+function load() { try { const r = localStorage.getItem(SAVE_KEY); if (r) { const o = JSON.parse(r); if (o && o.v === 1) S = Object.assign(freshState(), o); } } catch (e) { } }
+
+/* ---------- Sterne ---------- */
+function levelStars(lv) {
+  const L = LEVELS[lv]; let sum = 0;
+  for (let p = 0; p < L.puzzles.length; p++) { const h = S.hints[lv + "-" + p] || 0; if (h >= 3) return 0; sum += h; }
+  return Math.max(0, 3 - sum);
+}
+const MAIN = LEVELS.filter(l => !l.bonus).length;            // 5
+const BONUS_IDX = LEVELS.findIndex(l => l.bonus);
+function totalStars() { let t = 0; for (let i = 0; i < MAIN; i++) t += S.done.includes(i) ? levelStars(i) : 0; return t; }
+function bonusStars() { return S.bonusDone ? levelStars(BONUS_IDX) : 0; }
+function rankFor(stars) { return RAENGE.find(r => stars >= r.min); }
+
+/* ---------- Prüfcode: Sterne je Level + Bonus, verschlüsselt mit Prüfsumme ---------- */
+const B32 = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+function encodeCode(levels, bonus) {
+  let data = 0; levels.forEach((s, i) => data += s * Math.pow(4, i)); data += bonus * 1024;   // 12 Bit
+  const salt = rnd(0, 7);
+  const scr = data ^ ((salt * 0x2B5 + 0x1A3) & 0xFFF);
+  const chk = (data * 31 + salt * 97 + 517) % 1009;
+  let n = scr * 8192 + salt * 1024 + chk;                       // 25 Bit
+  let s = ""; for (let i = 0; i < 5; i++) { s = B32[n % 32] + s; n = Math.floor(n / 32); }
+  return "SR-" + s;
+}
+function decodeCode(code) {
+  const c = String(code).toUpperCase().replace(/[^0-9A-Z]/g, "").replace(/^SR/, "").replace(/O/g, "0").replace(/I/g, "1");
+  if (c.length !== 5) return null;
+  let n = 0; for (const ch of c) { const i = B32.indexOf(ch); if (i < 0) return null; n = n * 32 + i; }
+  const chk = n % 1024, salt = Math.floor(n / 1024) % 8, scr = Math.floor(n / 8192);
+  const data = scr ^ ((salt * 0x2B5 + 0x1A3) & 0xFFF);
+  if ((data * 31 + salt * 97 + 517) % 1009 !== chk) return null;
+  const levels = []; for (let i = 0; i < 5; i++) levels.push(Math.floor(data / Math.pow(4, i)) % 4);
+  const bonus = Math.floor(data / 1024) % 4, total = levels.reduce((a, b) => a + b, 0);
+  return { levels, bonus, total, rank: rankFor(total).name };
+}
+
+/* ---------- Rätsel aus Daten bauen (Variante wählen, Platzhalter ersetzen) ---------- */
+function subst(x, vars) {
+  if (typeof x === "string") return x.replace(/%([a-zA-Z]+)/g, (m, k) => (k in vars && typeof vars[k] !== "object") ? String(vars[k]) : m);
+  if (Array.isArray(x)) return x.map(y => subst(y, vars));
+  if (x && typeof x === "object") { const o = {}; for (const k in x) o[k] = subst(x[k], vars); return o; }
+  return x;
+}
+function chooseVariant(lv, pz, force) {
+  const key = lv + "-" + pz, base = LEVELS[lv].puzzles[pz];
+  if (!S.vars[key] || force !== undefined) {
+    const v = {};
+    if (base.variants) v.vi = force !== undefined ? force : rnd(0, base.variants.length - 1);
+    const cards = base.variants ? (base.variants[v.vi].cards || base.cards) : base.cards;
+    const pick = base.pick;
+    if (cards && pick && pick < cards.length) {
+      const bins = [...new Set(cards.map(c => c.bin))];
+      let chosen;
+      for (let t = 0; t < 80; t++) {
+        chosen = shuffle(cards.map((c, i) => i)).slice(0, pick);
+        const cnt = b => chosen.filter(i => cards[i].bin === b).length;
+        if (bins.every(b => cnt(b) >= Math.min(bins.length === 2 ? 2 : 1, cards.filter(c => c.bin === b).length))) break;
+      }
+      v.cards = chosen;
+    }
+    S.vars[key] = v; save();
+  }
+  return S.vars[key];
+}
+function getPuzzle(lv, pz) {
+  const base = LEVELS[lv].puzzles[pz], v = chooseVariant(lv, pz);
+  let P = Object.assign({}, base, base.variants ? base.variants[v.vi] : {});
+  delete P.variants;
+  if (v.cards && P.cards) P.cards = v.cards.map(i => P.cards[i]);
+  const vars = {};
+  for (const k in P) if (typeof P[k] !== "object") vars[k] = P[k];
+  if (P.target) { vars.z = P.target[0]; vars.n = P.target[1]; }
+  if (P.frac) { vars.a = P.frac[0]; vars.b = P.frac[1]; }
+  P = subst(P, vars);
+  P.key = lv + "-" + pz; P.lv = lv; P.pz = pz;
+  return P;
+}
+
+/* ---------- Figuren (SVG) ---------- */
+let figId = 0;
+const COL = { o: "#ffab40", b: "#4cc3ff", empty: "#22324f", stroke: "#a9bddf", guide: "#ffab40" };
+function patDefs(id) {
+  return `<defs><pattern id="po${id}" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="${COL.o}"/><rect width="3" height="8" fill="rgba(0,0,0,.2)"/></pattern>
+  <pattern id="pb${id}" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="8" height="8" fill="${COL.b}"/><rect width="3" height="8" fill="rgba(0,0,0,.2)"/></pattern></defs>`;
+}
+function fig(spec, opt = {}) {
+  if (!spec) return "";
+  const id = ++figId, fill = c => `url(#p${c || "b"}${id})`, col = spec.color || "b";
+  const W = opt.size || 240;
+  if (spec.t === "grid") {
+    const s = Math.min(W / spec.c, 50), w = s * spec.c, h = s * spec.r; let r = "";
+    for (let i = 0; i < spec.c * spec.r; i++) { const x = (i % spec.c) * s, y = Math.floor(i / spec.c) * s;
+      r += `<rect x="${x + 2}" y="${y + 2}" width="${s - 4}" height="${s - 4}" rx="3" fill="${spec.on.includes(i) ? fill(col) : COL.empty}" stroke="${COL.stroke}" stroke-width="1.2"/>`; }
+    return `<div class="fig"><svg viewBox="-2 -2 ${w + 4} ${h + 4}" width="${w}" role="img" aria-label="Raster aus ${spec.c * spec.r} gleich großen Teilen, ${spec.on.length} gefärbt">${patDefs(id)}${r}</svg></div>`;
+  }
+  if (spec.t === "strip") {
+    const w = Math.min(W * 1.8, 440), s = w / spec.n, h = 56; let r = "";
+    for (let i = 0; i < spec.n; i++) r += `<rect x="${i * s}" y="0" width="${s}" height="${h}" fill="${i < spec.k ? fill(col) : COL.empty}" stroke="${COL.stroke}" stroke-width="2"/>`;
+    return `<div class="fig"><svg viewBox="-2 -2 ${w + 4} ${h + 4}" width="${w}" role="img" aria-label="Streifen aus ${spec.n} gleich großen Teilen, ${spec.k} gefärbt">${patDefs(id)}${r}</svg></div>`;
+  }
+  if (spec.t === "circle" || spec.t === "pie") {
+    const angles = spec.t === "pie" ? spec.angles : Array(spec.n).fill(360 / spec.n);
+    const on = spec.t === "pie" ? spec.on : [...Array(spec.k).keys()];
+    const R = 100; let a0 = -90, r = "";
+    angles.forEach((a, i) => { const a1 = a0 + a, p = d => [R + R * Math.cos(d * Math.PI / 180), R + R * Math.sin(d * Math.PI / 180)];
+      const [x0, y0] = p(a0), [x1, y1] = p(a1);
+      r += `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a > 180 ? 1 : 0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${on.includes(i) ? fill(col) : COL.empty}" stroke="${COL.stroke}" stroke-width="2"/>`; a0 = a1; });
+    const sz = Math.min(W, 220);
+    return `<div class="fig"><svg viewBox="-3 -3 206 206" width="${sz}" role="img" aria-label="Kreis aus ${angles.length} Stücken, ${on.length} gefärbt">${patDefs(id)}${r}</svg></div>`;
+  }
+  if (spec.t === "poly") {
+    const s = Math.min(W / spec.w, 280 / spec.h), w = spec.w * s, h = spec.h * s; let r = "";
+    spec.parts.forEach(pt => r += `<polygon points="${pt.p.map(q => q[0] * s + "," + q[1] * s).join(" ")}" fill="${pt.f ? fill(col) : COL.empty}" stroke="${COL.stroke}" stroke-width="2.5" stroke-linejoin="round"/>`);
+    if (opt.guides && spec.guides) spec.guides.forEach(g => r += `<line x1="${g[0] * s}" y1="${g[1] * s}" x2="${g[2] * s}" y2="${g[3] * s}" stroke="${COL.guide}" stroke-width="3" stroke-dasharray="8 6"/>`);
+    return `<div class="fig"><svg viewBox="-3 -3 ${w + 6} ${h + 6}" width="${w}" role="img" aria-label="Figur aus ${spec.parts.length} Stücken, eins gefärbt">${patDefs(id)}${r}</svg></div>`;
+  }
+  if (spec.t === "strips12") {
+    let out = `<div class="strips12">`;
+    spec.rows.forEach(row => { const n = +row.n, per = 12 / n; let r = "";
+      for (let i = 0; i < 12; i++) r += `<rect x="${i * 34}" y="0" width="34" height="40" fill="${i < per * row.k ? fill("b") : COL.empty}" stroke="${COL.stroke}" stroke-width="1"/>`;
+      for (let g = 0; g <= n; g++) r += `<line x1="${g * per * 34}" y1="0" x2="${g * per * 34}" y2="40" stroke="#eef3fb" stroke-width="3"/>`;
+      out += `<div>${md(row.label)}</div><svg viewBox="-2 -2 412 44" width="100%" role="img" aria-label="12er-Streifen in ${n} Teile geteilt">${patDefs(id)}${r}</svg>`; });
+    return out + `</div>`;
+  }
+  if (spec.t === "chests") {
+    const chest = (l, c) => `<figure><svg viewBox="0 0 120 96" width="120" aria-hidden="true"><rect x="10" y="36" width="100" height="54" rx="6" fill="#3a2a17" stroke="${c}" stroke-width="4"/><path d="M10 40 Q60 0 110 40 Z" fill="#4a3620" stroke="${c}" stroke-width="4"/><rect x="50" y="44" width="20" height="22" rx="3" fill="${c}"/></svg><figcaption><b>Truhe ${l}</b></figcaption></figure>`;
+    return `<div class="figrow">${chest("A", COL.b)}${chest("B", COL.o)}</div>`;
+  }
+  if (spec.t === "breads") {
+    let r = ""; for (let i = 0; i < spec.n; i++) r += `<rect x="${i * 70 + 4}" y="6" width="60" height="40" rx="10" fill="url(#pb${id})" stroke="${COL.stroke}" stroke-width="2"/><text x="${i * 70 + 34}" y="33" text-anchor="middle" font-size="20" fill="#06121f">⚡</text>`;
+    return `<div class="fig"><svg viewBox="0 0 ${spec.n * 70 + 4} 52" width="${spec.n * 70}" role="img" aria-label="${spec.n} Power-Ups">${patDefs(id)}${r}</svg></div>`;
+  }
+  return "";
+}
+
+/* ---------- Sound (optional, standardmäßig aus) ---------- */
+let actx = null;
+function beep(ok) {
+  if (!S.sound) return;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(); o.connect(g); g.connect(actx.destination);
+    o.type = "square"; g.gain.value = 0.04; const t = actx.currentTime;
+    if (ok) { o.frequency.setValueAtTime(660, t); o.frequency.setValueAtTime(880, t + .09); } else o.frequency.setValueAtTime(220, t);
+    o.start(t); o.stop(t + (ok ? .2 : .12)); } catch (e) { }
+}
+
+/* ---------- Gemeinsame UI-Teile ---------- */
+const LOGO_PX = `<div class="px" aria-hidden="true"><i class="b"></i><i></i><i class="o"></i><i class="b"></i><i></i><i class="b"></i><i class="b"></i><i></i><i class="o"></i><i class="b"></i><i></i><i class="b"></i><i class="b"></i><i></i><i class="b"></i><i class="o"></i></div>`;
+function logo(label) { return `<button class="logo" id="logo" aria-label="Server-Rescue">${LOGO_PX}<b>${esc(label || "SERVER-RESCUE")}</b></button>`; }
+function starsHtml(n, max = 3) { let s = ""; for (let i = 0; i < max; i++) s += `<span class="star ${i < n ? "" : "lost"}" aria-hidden="true">★</span>`; return `<span class="stars" role="img" aria-label="${n} von ${max} Sternen">${s}</span>`; }
+function fragsHtml() { return `<div class="frags" aria-label="Code-Fragmente">${LEVELS.slice(0, MAIN).map((L, i) => `<span class="${S.done.includes(i) ? "got" : ""}">${S.done.includes(i) ? L.fragment : "·".repeat(L.fragment.length)}</span>`).join("")}</div>`; }
+function levelChips() {
+  return `<div class="levels" aria-label="Levelfortschritt">${LEVELS.map((L, i) => `<span class="lv ${L.bonus ? "secret" : ""} ${S.done.includes(i) ? "done" : ""} ${S.lv === i && !S.done.includes(i) && S.phase !== "start" ? "now" : ""}">${L.bonus ? (S.done.includes(i) ? "𓂀" : "?") : i + 1}</span>`).join("")}</div>`;
+}
+function soundBtn() { return `<button class="iconbtn" id="sound" aria-pressed="${S.sound}" aria-label="Sound ${S.sound ? "an" : "aus"}">${S.sound ? "🔊" : "🔇"}</button>`; }
+function topbar(label, showStars = true) {
+  return `<div class="topbar">${logo(label)}${levelChips()}${showStars ? starsHtml(levelStars(S.lv)) : ""}${fragsHtml()}${soundBtn()}</div>`;
+}
+function feedback(el, kind, html) {
+  el.className = "feedback show " + kind;
+  el.innerHTML = `<span class="ic" aria-hidden="true">${kind === "good" ? "✅" : "🔍"}</span><div>${html}</div>`;
+  if (kind !== "good") beep(false);
+}
+function numInput(cls = "") { return `<input class="num ${cls}" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Zahl">`; }
+const intOf = el => { const v = el.value.trim(); return v === "" || !/^\d+$/.test(v) ? NaN : parseInt(v, 10); };
+
+/* =====================================================================
+   BILDSCHIRME
+   ===================================================================== */
+function render() {
+  const app = $("#app");
+  figId = 0;
+  ({ start: renderStart, intro: renderIntro, puzzle: renderPuzzle, levelDone: renderLevelDone,
+     password: renderPassword, bonusOffer: renderBonusOffer, cert: renderCert })[S.phase](app);
+  bindCommon();
+  window.scrollTo(0, 0);
+}
+function bindCommon() {
+  const sb = $("#sound"); if (sb) sb.onclick = () => { S.sound = !S.sound; save(); sb.setAttribute("aria-pressed", S.sound); sb.textContent = S.sound ? "🔊" : "🔇"; sb.setAttribute("aria-label", "Sound " + (S.sound ? "an" : "aus")); beep(true); };
+  const lg = $("#logo"); if (lg) lg.onclick = logoTap;
+}
+
+/* ---------- Start ---------- */
+function renderStart(app) {
+  const resume = !!S.resumePhase;
+  app.innerHTML = `
+  <div class="topbar">${logo()}${soundBtn()}</div>
+  <div class="hero">
+    <div class="story">
+      <span class="tag">⚠ SYSTEMALARM</span>
+      <h1>${esc(STORY.title)}</h1>
+      ${STORY.intro.map(p => `<p>${md(p)}</p>`).join("")}
+      <div class="card" style="margin-top:18px;padding:16px">
+        <div class="row" style="justify-content:space-between"><span>${MAIN} Level + <span class="muted">1 geheimes Level</span></span>${starsHtml(3)}</div>
+        <div class="muted" style="font-size:.95rem;margin-top:6px">Pro Level 3 Sterne. Tipps kosten Sterne – falsche Eingaben nicht. Jede:r kommt durch!</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:1.3rem">Wie spielt ihr?</h2>
+      <div class="modes" role="group" aria-label="Spielmodus">
+        <button class="mode" data-mode="solo" aria-pressed="${S.mode === "solo"}"><span aria-hidden="true">👤</span><b>Einzeln</b><small>Du allein am Gerät</small></button>
+        <button class="mode" data-mode="team" aria-pressed="${S.mode === "team"}"><span aria-hidden="true">👥</span><b>Team (2–3)</b><small>Ihr teilt ein Gerät</small></button>
+      </div>
+      <label class="lbl" for="nick" id="nickLabel">${S.mode === "team" ? "Teamname" : "Spitzname"}</label>
+      <input class="txt" type="text" id="nick" maxlength="24" autocomplete="off" value="${esc(S.name)}" placeholder="z. B. Pixel-Piraten">
+      <div class="muted" style="font-size:.9rem;margin-top:6px">Spitzname reicht – keine echten Namen nötig.</div>
+      <div class="teamhint" id="teamHint" ${S.mode === "team" ? "" : "hidden"}>💬 <b>Team-Regel:</b> ${md(STORY.teamRule)}</div>
+      <div class="row" style="margin-top:18px">
+        <button class="btn primary" style="flex:1" id="go">${resume ? "▶ Weiterspielen" : "▶ Rettung starten"}</button>
+        ${resume ? `<button class="btn ghost" id="restart">Neu starten</button>` : ""}
+      </div>
+      <div class="feedback" id="startFb" role="status"></div>
+    </div>
+  </div>`;
+  $$(".mode").forEach(b => b.onclick = () => {
+    S.mode = b.dataset.mode; $$(".mode").forEach(x => x.setAttribute("aria-pressed", x === b));
+    $("#nickLabel").textContent = S.mode === "team" ? "Teamname" : "Spitzname"; $("#teamHint").hidden = S.mode !== "team"; save();
+  });
+  $("#go").onclick = () => {
+    const n = $("#nick").value.trim();
+    if (!n) { feedback($("#startFb"), "hint", "Gib zuerst einen Spitznamen oder Teamnamen ein."); $("#nick").focus(); return; }
+    S.name = n; if (!S.startedAt) S.startedAt = Date.now();
+    S.phase = resume && S.resumePhase ? S.resumePhase : "intro"; delete S.resumePhase; save(); render();
+  };
+  if (resume) $("#restart").onclick = () => { const keep = { name: S.name, mode: S.mode, sound: S.sound }; S = Object.assign(freshState(), keep); save(); render(); };
+}
+
+/* ---------- Level-Intro ---------- */
+function renderIntro(app) {
+  const L = LEVELS[S.lv];
+  app.innerHTML = `${topbar(L.bonus ? "SECRET LEVEL" : "LEVEL " + L.id)}
+  <div class="card big">
+    <span class="tag">${L.bonus ? "BONUS · AFB " + L.afb : "FIREWALL " + L.id + " / " + MAIN + " · AFB " + L.afb}</span>
+    <h1>${esc(L.name)}</h1>
+    <div class="muted">${esc(L.topic)} · ${L.puzzles.length} Rätsel</div>
+    <div class="glitchmsg"><span class="who">&gt; ${L.bonus ? "SYSTEM" : "GLITCH"}:</span> ${md(L.intro)}</div>
+    ${S.mode === "team" ? `<div class="teamhint" style="text-align:left">💬 ${md(L.team)}</div>` : ""}
+    <div class="row center" style="margin-top:18px"><button class="btn primary" id="go">▶ Firewall angreifen</button></div>
+  </div>`;
+  $("#go").onclick = () => { S.phase = "puzzle"; S.pz = S.pz || 0; save(); render(); };
+}
+
+/* ---------- Rätsel ---------- */
+let CUR = null;
+function renderPuzzle(app) {
+  const L = LEVELS[S.lv], P = getPuzzle(S.lv, S.pz); CUR = P;
+  const solved = !!S.solved[P.key], h = S.hints[P.key] || 0;
+  app.innerHTML = `${topbar(L.bonus ? "SECRET LEVEL" : "LEVEL " + L.id + " · " + L.name.toUpperCase())}
+  <div class="puzzle">
+    <div class="card" id="pcard">
+      <span class="tag">RÄTSEL ${S.pz + 1} / ${L.puzzles.length} · ${esc(P.title.toUpperCase())}</span>
+      ${S.mode === "team" && ["choice", "sort", "order"].includes(P.type) ? `<div class="teamline">💬 Diskutiert erst, dann tippt die Pilot:in.</div>` : ""}
+      <div id="pbody"></div>
+      <div class="feedback" id="fb" role="status" aria-live="polite"></div>
+      <div id="done"></div>
+    </div>
+    <aside class="card side" id="side"></aside>
+  </div>`;
+  COMP[P.type].render($("#pbody"), P, h);
+  renderSide(P);
+  if (solved) showSolved(P, h >= 3);
+}
+function renderSide(P) {
+  const side = $("#side"), h = S.hints[P.key] || 0, lvStars = levelStars(S.lv);
+  if (P.free) { side.innerHTML = `<h3>System-Info</h3><p>Hier lernst du etwas Neues. Probiere aus – das kostet <b>keine</b> Sterne.</p><div class="infobox">Danach kommt der Boss. Die Regeln brauchst du dort!</div>`; return; }
+  const sol = P.solution || "";
+  const hintsTxt = [P.hints && P.hints[0], P.hints && P.hints[1], sol];
+  const cost = i => i < 2 ? (lvStars > 0 ? "−1 ★" : "kostenlos") : "Level = 0 ★";
+  const names = ["💡 Tipp 1 · Denkanstoß", "🖼️ Tipp 2 · Beispiel", "🔑 Tipp 3 · Lösung"];
+  let html = `<h3>Tipps</h3><div class="hints">`;
+  for (let i = 0; i < 3; i++) {
+    const open = h > i;
+    html += `<button class="hintbtn ${open ? "open" : ""}" data-h="${i}" ${(!open && h !== i) || S.solved[P.key] && !open ? "disabled" : ""} aria-expanded="${open}"><span>${names[i]}</span><span class="cost">${open ? "offen" : cost(i)}</span></button>`;
+    if (open) html += `<div class="hinttext">${md(hintsTxt[i])}</div>`;
+  }
+  html += `</div><div class="infobox">Falsche Eingaben kosten <b>keine</b> Sterne – du bekommst einen Hinweis.${S.mode === "team" ? `<br><br><span class="tag">TEAM</span> Pilot:in wechseln nicht vergessen!` : ""}</div>`;
+  side.innerHTML = html;
+  $$(".hintbtn", side).forEach(b => b.onclick = () => {
+    const i = +b.dataset.h; if (i !== (S.hints[P.key] || 0)) return;
+    if (i === 2 && !b.classList.contains("confirm")) { b.classList.add("confirm"); b.querySelector("span").textContent = "Sicher? Nochmal tippen = Lösung"; return; }
+    S.hints[P.key] = i + 1; save();
+    if (i === 2) { S.solved[P.key] = true; save(); renderPuzzle($("#app")); bindCommon(); return; }
+    renderSide(P); refreshStars();
+    if (P.showGuidesOnHint && i + 1 >= P.showGuidesOnHint && COMP[P.type].guides) COMP[P.type].guides();
+  });
+}
+function refreshStars() { const st = $(".topbar .stars"); if (st) st.outerHTML = starsHtml(levelStars(S.lv)); }
+function solve(P, extra) {
+  if (S.solved[P.key]) return;
+  S.solved[P.key] = true; save(); beep(true);
+  showSolved(P, false, extra); renderSide(P);
+}
+function showSolved(P, viaHint, extra) {
+  const d = $("#done"); $("#fb").className = "feedback";
+  const last = S.pz + 1 >= LEVELS[S.lv].puzzles.length;
+  d.innerHTML = `<div class="success pop" role="status">
+    <b>${viaHint ? "🔑 Lösung" : "✅ Geknackt!"}</b> ${md(P.solution || "")}${extra || ""}
+    <div class="row" style="margin-top:12px"><button class="btn primary" id="next">${last ? "Firewall öffnen ▶" : "Nächstes Rätsel ▶"}</button></div></div>`;
+  $$("#pbody input, #pbody button").forEach(el => { if (!el.closest(".keep")) el.disabled = true; });
+  $("#next").onclick = () => { if (last) { S.phase = "levelDone"; if (!S.done.includes(S.lv)) S.done.push(S.lv); if (LEVELS[S.lv].bonus) S.bonusDone = true; } else S.pz++; save(); render(); };
+  $("#next").focus({ preventScroll: true });
+  d.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+/* ---------- Level geschafft ---------- */
+function renderLevelDone(app) {
+  const L = LEVELS[S.lv], st = levelStars(S.lv);
+  app.innerHTML = `${topbar(L.bonus ? "SECRET LEVEL" : "LEVEL " + L.id, false)}
+  <div class="card big">
+    <span class="tag">${L.bonus ? "SECRET LEVEL GESCHAFFT" : "FIREWALL " + L.id + " GEKNACKT"}</span>
+    <h1>${L.bonus ? "Pharao-Code geknackt!" : "Zugriff erlaubt!"}</h1>
+    ${L.bonus ? `<div class="fragbig pop" style="border-color:var(--orange);color:var(--orange)">𓂀 PHARAO-HACKER</div><p>Abzeichen freigeschaltet – und ${st} Extra-Stern${st === 1 ? "" : "e"}!</p>`
+      : `<p>Code-Fragment freigeschaltet:</p><div class="fragbig pop">${esc(L.fragment)}</div>`}
+    <div class="row center">${starsHtml(st)}</div>
+    <p class="muted">${st === 3 ? "Alle Sterne – ohne Tipps! Stark." : st === 0 ? "Geschafft! Mit Tipps lernt man auch – im nächsten Level holst du dir Sterne." : "Geschafft! Weiter so."}</p>
+    <div class="row center" style="margin-top:12px"><button class="btn primary" id="go">${L.bonus ? "Zur Urkunde ▶" : S.lv + 1 >= MAIN ? "Master-Passwort eingeben ▶" : "Nächste Firewall ▶"}</button></div>
+  </div>`;
+  $("#go").onclick = () => {
+    if (L.bonus) { S.phase = "cert"; S.lv = 0; }
+    else if (S.lv + 1 >= MAIN) S.phase = S.pwOk ? "bonusOffer" : "password";
+    else { S.lv++; S.pz = 0; S.phase = "intro"; }
+    save(); render();
+  };
+}
+
+/* ---------- Master-Passwort ---------- */
+function renderPassword(app) {
+  const frags = LEVELS.slice(0, MAIN).map(l => l.fragment);
+  let order = shuffle(frags.map((f, i) => i)); if (order.every((v, i) => v === i)) order = order.reverse();
+  let picked = [];
+  app.innerHTML = `${topbar("FINALE", false)}
+  <div class="card big">
+    <span class="tag">MASTER-PASSWORT</span>
+    <h1>Fast geschafft!</h1>
+    <p>Setze die fünf Code-Fragmente in der Reihenfolge der Level zusammen. Tippe sie nacheinander an.</p>
+    <div class="pwslots" id="slots">${frags.map((f, i) => `<div class="pwslot" data-i="${i}">${i + 1}</div>`).join("")}</div>
+    <div class="row center" id="pool">${order.map(i => `<button class="btn pwfrag" data-f="${i}">${esc(frags[i])}</button>`).join("")}</div>
+    <div class="row center" style="margin-top:12px"><button class="btn ghost" id="undo">↺ Zurück</button></div>
+    <div class="feedback" id="fb" role="status"></div>
+    <div id="done"></div>
+  </div>`;
+  const draw = () => {
+    $$(".pwslot").forEach((s, i) => { s.textContent = picked[i] !== undefined ? frags[picked[i]] : i + 1; s.classList.toggle("filled", picked[i] !== undefined); });
+    $$(".pwfrag").forEach(b => b.disabled = picked.includes(+b.dataset.f));
+  };
+  $$(".pwfrag").forEach(b => b.onclick = () => {
+    picked.push(+b.dataset.f); draw();
+    if (picked.length === frags.length) {
+      if (picked.every((v, i) => v === i)) {
+        S.pwOk = true; S.phase = "bonusOffer"; S.finishedAt = S.finishedAt || Date.now(); save(); beep(true);
+        $("#done").innerHTML = `<div class="success pop"><b>${esc(STORY.password)}</b> – Server wieder online! 🎉<div class="row center" style="margin-top:12px"><button class="btn primary" id="next">Weiter ▶</button></div></div>`;
+        $("#next").onclick = () => render();
+      } else { feedback($("#fb"), "hint", "Das Passwort stimmt nicht. Tipp: Das Fragment aus Level 1 kommt zuerst, dann Level 2 …"); setTimeout(() => { picked = []; draw(); }, 900); }
+    }
+  });
+  $("#undo").onclick = () => { picked.pop(); draw(); };
+}
+
+/* ---------- Bonus-Angebot ---------- */
+function renderBonusOffer(app) {
+  app.innerHTML = `${topbar("SERVER ONLINE", false)}
+  <div class="card big">
+    <span class="tag">⚠ VERSTECKTER ORDNER GEFUNDEN</span>
+    <h1>Secret Level entdeckt!</h1>
+    <p>Beim Neustart taucht ein geheimer Ordner auf: <b>/pharao</b>. Darin: uralte Bruch-Codes aus Ägypten.</p>
+    <p class="muted">Das Bonuslevel bringt Extra-Sterne und ein Abzeichen. Für deinen Rang ist es nicht nötig.</p>
+    <div class="row center" style="margin-top:14px">
+      <button class="btn orange" id="bonus">𓂀 Secret Level spielen</button>
+      <button class="btn" id="cert">Zur Urkunde</button>
+    </div>
+  </div>`;
+  $("#bonus").onclick = () => { S.lv = BONUS_IDX; S.pz = 0; S.phase = "intro"; save(); render(); };
+  $("#cert").onclick = () => { S.phase = "cert"; save(); render(); };
+}
+
+/* ---------- Urkunde ---------- */
+function renderCert(app) {
+  const tot = totalStars(), r = rankFor(tot), bs = bonusStars();
+  const lvls = []; for (let i = 0; i < MAIN; i++) lvls.push(S.done.includes(i) ? levelStars(i) : 0);
+  if (!S.code || S.codeFor !== lvls.join("") + bs) { S.code = encodeCode(lvls, bs); S.codeFor = lvls.join("") + bs; save(); }
+  const date = new Date(S.finishedAt || Date.now()).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  app.innerHTML = `<div class="topbar">${logo()}${soundBtn()}</div>
+  <div class="certwrap"><div class="cert">
+    <div class="pxrow" aria-hidden="true">${"<i></i>".repeat(9)}</div>
+    <div class="code" style="font-size:.9rem;color:#5a6782">SERVER STATUS: ONLINE ✔</div>
+    <h2>URKUNDE</h2>
+    <div>Der Gameserver wurde gerettet von</div>
+    <div class="who">${esc(S.name || "Rescue-Team")}</div>
+    <div><span class="rank"><span class="medal ${r.medal}" aria-hidden="true"></span>Rang: ${esc(r.name.toUpperCase())}</span>${S.bonusDone ? `<span class="badge">𓂀 Pharao-Hacker</span>` : ""}</div>
+    <div class="stars" role="img" aria-label="${tot} von 15 Sternen">${Array.from({ length: 15 }, (_, i) => `<span class="star ${i < tot ? "" : "lost"}" aria-hidden="true">★</span>`).join("")}</div>
+    <div style="font-weight:700">${tot} von 15 Sternen${bs ? ` <span style="color:#1f6fa3">+ ${bs} Bonus-Stern${bs === 1 ? "" : "e"}</span>` : ""}</div>
+    <p class="certmsg">${md(r.text)}</p>
+    <div class="certgrid">
+      <div>Datum<b>${date}</b></div>
+      <div>Modus<b>${S.mode === "team" ? "Team (2–3)" : "Einzeln"}</b></div>
+      <div>Prüfcode<b class="code" id="code">${S.code}</b></div>
+    </div>
+    <div class="certactions">
+      <button class="btn primary" id="print">🖨 Drucken</button>
+      ${S.bonusDone ? "" : `<button class="btn orange" id="bonus" style="color:#1a1000">𓂀 Secret Level spielen</button>`}
+      <button class="btn" id="again">↺ Neues Spiel</button>
+    </div>
+  </div></div>`;
+  $("#print").onclick = () => window.print();
+  if ($("#bonus")) $("#bonus").onclick = () => { S.lv = BONUS_IDX; S.pz = 0; S.phase = "intro"; save(); render(); };
+  $("#again").onclick = function () {
+    if (!this.dataset.sure) { this.dataset.sure = 1; this.textContent = "Sicher? Fortschritt wird gelöscht"; return; }
+    const keep = { mode: S.mode, sound: S.sound }; S = Object.assign(freshState(), keep); save(); render();
+  };
+}
+
+/* =====================================================================
+   RÄTSEL-KOMPONENTEN
+   ===================================================================== */
+const COMP = {};
+
+/* --- Zahlenschloss: Bruch eingeben --- */
+function diagnoseFrac(z, n, P, figCount) {
+  const [az, an] = P.answer;
+  if (isNaN(z) || isNaN(n)) return "Trage Zähler und Nenner ein.";
+  if (n === 0) return "Durch 0 kann man nicht teilen. Der <b>Nenner nennt</b>, in wie viele gleich große Teile das Ganze geteilt ist.";
+  const w = P.wrong && P.wrong[z + "/" + n]; if (w) return md(w);
+  if (eqFrac(z, n, an, az) && !eqFrac(z, n, az, an)) return "Hast du Zähler und Nenner vertauscht? Der <b>Zähler zählt</b> die gefärbten Teile, der <b>Nenner nennt</b> die Anzahl aller gleich großen Teile.";
+  if (eqFrac(z, n, an - az, an)) return "Du hast die <b>ungefärbten</b> Teile gezählt. Gefragt ist der gefärbte Anteil.";
+  if (z > n) return "Der Zähler ist größer als der Nenner – dann wäre mehr als das Ganze gefärbt. Hast du etwas vertauscht?";
+  if (n === an && z !== az) return "Der Nenner stimmt! Zähle die gefärbten Teile noch einmal – das ist der Zähler.";
+  if (z === az && n !== an) return "Der Zähler stimmt! Prüfe den Nenner: In wie viele <b>gleich große</b> Teile ist das Ganze geteilt?";
+  if (figCount && n === figCount) return "Du hast die Stücke gezählt – prüfe ihre Größe. Sind alle Teile gleich groß?";
+  return "Noch nicht. Zähle zuerst alle <b>gleich großen</b> Teile (Nenner), dann die gefärbten (Zähler).";
+}
+COMP.lock = {
+  render(el, P, h) {
+    const guides = P.showGuidesOnHint && h >= P.showGuidesOnHint;
+    el.innerHTML = `<p class="task">${md(P.text)}</p><div id="figbox">${fig(P.fig, { guides })}</div>
+      ${P.fig && P.fig.color === "o" ? `<div class="legend">Orange Pixel sind gestreift.</div>` : ""}
+      ${P.showGuidesOnHint ? `<div class="row center keep"><button class="btn small ghost" id="gbtn" ${guides ? "" : "hidden"}>📐 Hilfslinien zeigen</button></div>` : ""}
+      <div class="lockwrap"><span class="lockside">Zähler <small>zählt</small><br><br>Nenner <small>nennt</small></span>
+        <span class="ifrac">${numInput("z")}<span class="bar"></span>${numInput("n")}</span>
+        <button class="btn primary" id="chk">🔓 Entsperren</button></div>`;
+    const zi = $(".num.z", el), ni = $(".num.n", el);
+    zi.setAttribute("aria-label", "Zähler"); ni.setAttribute("aria-label", "Nenner");
+    const go = () => {
+      const z = intOf(zi), n = intOf(ni), [az, an] = P.answer, fb = $("#fb");
+      const figCount = P.fig && P.fig.parts ? P.fig.parts.length : 0;
+      if (!isNaN(z) && !isNaN(n) && n > 0 && eqFrac(z, n, az, an)) {
+        if (P.mode === "reduced" && gcd(z, n) !== 1) { feedback(fb, "hint", `Richtig abgelesen: ${F(z, n)}. Aber Glitch will die gröbste Einteilung: <b>Kürze vollständig!</b> Durch welche Zahl kannst du Zähler und Nenner teilen?`); return; }
+        if (P.mode === "exact" && (z !== az || n !== an)) { feedback(fb, "hint", `${F(z, n)} hat den richtigen Wert – gesucht ist aber genau die Einteilung im Bild.`); return; }
+        const extra = (gcd(z, n) !== 1) ? ` Übrigens: ${F(z, n)} = ${F(z / gcd(z, n), n / gcd(z, n))} (vollständig gekürzt).` : "";
+        P.onSolve ? P.onSolve() : solve(P, extra); return;
+      }
+      feedback(fb, "hint", diagnoseFrac(z, n, P, figCount));
+    };
+    $("#chk", el).onclick = go;
+    [zi, ni].forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") go(); }));
+    const gb = $("#gbtn", el); if (gb) gb.onclick = () => $("#figbox", el).innerHTML = fig(P.fig, { guides: true });
+    COMP.lock.guides = () => { if (gb) { gb.hidden = false; $("#figbox", el).innerHTML = fig(P.fig, { guides: true }); } };
+  }
+};
+
+/* --- Lückenrechnung (Energie) --- */
+COMP.gap = {
+  render(el, P) {
+    const strip = () => { let r = ""; const s = 30;
+      for (let i = 0; i < P.p; i++) r += `<rect x="${i * s}" y="0" width="${s}" height="40" fill="url(#pb${figId})" stroke="${COL.stroke}" stroke-width="1.5"/>`;
+      r += `<rect x="${P.p * s + 6}" y="0" width="${Math.max(60, 5 * s)}" height="40" fill="none" stroke="${COL.stroke}" stroke-width="2" stroke-dasharray="6 6"/><text x="${P.p * s + 6 + Math.max(60, 5 * s) / 2}" y="27" text-anchor="middle" fill="#b4c2db" font-size="20">?</text>`;
+      const w = P.p * s + 12 + Math.max(60, 5 * s); return `<div class="fig"><svg viewBox="-2 -2 ${w + 4} 44" width="${Math.min(w, 520)}" role="img" aria-label="Lebensbalken mit ${P.p} Pixeln, Rest unbekannt">${patDefs(++figId)}${r.replace(/#pb\d+/g, "#pb" + figId)}</svg></div>`; };
+    el.innerHTML = `<p class="task">${md(P.text)}</p>${strip()}
+      ${P.rows.map((r, i) => `<div class="gaprow">${md(r).replace("<b>?</b>", numInput("g" + i))}</div>`).join("")}
+      <div class="row"><button class="btn primary" id="chk">✔ Prüfen</button></div>`;
+    $$(".num", el).forEach((x, i) => x.setAttribute("aria-label", i === 0 ? "Pixel pro Teil" : "Pixel insgesamt"));
+    $("#chk", el).onclick = () => {
+      const ins = $$(".num", el), u = intOf(ins[0]), w = intOf(ins[1]), [au, aw] = P.answer, fb = $("#fb");
+      ins.forEach(x => x.classList.remove("bad"));
+      if (u === au && w === aw) return solve(P);
+      if (u !== au) { ins[0].classList.add("bad");
+        if (u === P.p) return feedback(fb, "hint", `${P.p} Pixel sind alles, was du siehst – das sind ${F(P.a, P.b)}. Gesucht ist nur <b>ein</b> Teil, also ${F(1, P.b)}.`);
+        if (u === P.p * P.b) return feedback(fb, "hint", "Erst kleiner werden: Ein Teil ist kleiner als das, was du siehst. Teile die Pixel auf.");
+        return feedback(fb, "hint", `Der Zähler ${P.a} sagt: Die ${P.p} Pixel bestehen aus ${P.a} gleich großen Teilen. Wie viele Pixel hat ein Teil?`); }
+      ins[1].classList.add("bad");
+      if (w === P.p) return feedback(fb, "hint", "Das ist nur der Teil, den du siehst. Das Ganze ist größer!");
+      if (w === P.p * P.b) return feedback(fb, "hint", `Du hast so gerechnet, als wären die ${P.p} Pixel nur ${F(1, P.b)}. Es sind aber ${F(P.a, P.b)}.`);
+      if (w === P.p + au) return feedback(fb, "hint", `Das Ganze sind ${P.b} Teile, nicht nur einer mehr. Der Nenner nennt, wie viele Teile das Ganze hat.`);
+      feedback(fb, "hint", `Das Ganze besteht aus ${P.b} Teilen. Jeder Teil hat ${au} Pixel.`);
+    };
+  }
+};
+
+/* --- Begründung wählen (mehrschrittig) --- */
+function optOk(o, P) {
+  if (o.ok) return true;
+  if (!o.okIf) return false;
+  if (o.okIf === "never") return false;
+  if (o.okIf.startsWith("!")) return !P[o.okIf.slice(1)];
+  if (o.okIf.includes("=")) { const [k, v] = o.okIf.split("="); return String(P[k]) === v; }
+  return !!P[o.okIf];
+}
+COMP.choice = {
+  render(el, P, h) {
+    let guides = P.showGuidesOnHint && h >= P.showGuidesOnHint;
+    let step = 0; const order = P.steps.map(s => shuffle(s.options.map((o, i) => i)));
+    const draw = () => {
+      el.innerHTML = `<p class="task">${md(P.text)}</p><div id="figbox">${fig(P.fig, { guides })}</div>
+        ${P.showGuidesOnHint ? `<div class="row center keep"><button class="btn small ghost" id="gbtn" ${guides ? "" : "hidden"}>📐 Hilfslinien zeigen</button></div>` : ""}
+        ${P.steps.map((s, si) => `<div class="step ${si > step ? "locked" : ""}" ${si > step ? "hidden" : ""}><div class="q">${si + 1}. ${md(s.q)}</div>
+          <div class="opts">${order[si].map(oi => `<button class="opt ${si < step && optOk(s.options[oi], P) ? "ok" : ""}" data-s="${si}" data-o="${oi}" ${si < step ? "disabled" : ""}>${md(s.options[oi].t)}</button>`).join("")}</div></div>`).join("")}`;
+      $$(".opt", el).forEach(b => b.onclick = () => {
+        const si = +b.dataset.s, o = P.steps[si].options[+b.dataset.o];
+        if (si !== step) return;
+        if (optOk(o, P)) { step++; $("#fb").className = "feedback"; if (step >= P.steps.length) { draw(); solve(P); } else { beep(true); draw(); } }
+        else { b.classList.add("no"); feedback($("#fb"), "hint", md(o.fb || P.steps[si].fb || "Überlege noch einmal.")); }
+      });
+      const gb = $("#gbtn", el); if (gb) gb.onclick = () => { guides = true; $("#figbox", el).innerHTML = fig(P.fig, { guides: true }); };
+    };
+    COMP.choice.guides = () => { guides = true; const gb = $("#gbtn", el); if (gb) { gb.hidden = false; $("#figbox", el).innerHTML = fig(P.fig, { guides: true }); } };
+    draw();
+  }
+};
+
+/* --- Drag & Drop in Kästen (Maus, Touch, Stift + Tippen als Alternative) --- */
+COMP.sort = {
+  render(el, P) {
+    const cards = P.cards.map((c, i) => ({ ...c, i })); const order = shuffle(cards.map(c => c.i));
+    const place = {}; const fixed = {};
+    el.innerHTML = `<p class="task">${md(P.text)}</p>
+      <div class="muted" style="font-size:.9rem;margin-bottom:6px">Ziehen – oder erst Karte, dann Kasten antippen.</div>
+      <div class="tray" id="tray" data-bin="" aria-label="Ablage"></div>
+      <div class="bins" style="grid-template-columns:repeat(${Math.min(P.bins.length, 4)},minmax(0,1fr))">${P.bins.map(b => `<div class="bin" data-bin="${b.id}" role="button" tabindex="0" aria-label="Kasten ${esc(b.label.replace(/\[\[|\]\]/g, ""))}"><div class="bl">${md(b.label)}</div><div class="slot"></div></div>`).join("")}</div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="chk" disabled>✔ Prüfen</button></div>`;
+    const cardEl = c => { const d = document.createElement("div"); d.className = "dcard" + (c.t && !c.t.startsWith("[[") ? " txt" : ""); d.dataset.i = c.i;
+      d.setAttribute("role", "button"); d.tabIndex = 0; d.innerHTML = c.fig ? fig(c.fig, { size: 90 }) : md(c.t); d.setAttribute("aria-label", c.t ? c.t.replace(/\[\[|\]\]/g, "") : "Figur"); return d; };
+    const els = {}; order.forEach(i => { els[i] = cardEl(cards[i]); $("#tray", el).appendChild(els[i]); });
+    let sel = null;
+    const updateBtn = () => { $("#chk", el).disabled = Object.keys(place).filter(k => place[k]).length < cards.length; };
+    const moveTo = (i, bin) => {
+      if (fixed[i]) return; place[i] = bin || "";
+      (bin ? $(`.bin[data-bin="${bin}"] .slot`, el) : $("#tray", el)).appendChild(els[i]);
+      els[i].classList.remove("sel"); sel = null; $$(".bin", el).forEach(b => b.classList.remove("target")); updateBtn();
+    };
+    // Tippen
+    const selectCard = i => { if (fixed[i]) return; if (sel === i) { els[i].classList.remove("sel"); sel = null; $$(".bin", el).forEach(b => b.classList.remove("target")); return; }
+      if (sel !== null) els[sel].classList.remove("sel"); sel = i; els[i].classList.add("sel"); $$(".bin", el).forEach(b => b.classList.add("target")); };
+    $$(".bin", el).forEach(b => { b.onclick = e => { if (sel !== null && !e.target.closest(".dcard")) moveTo(sel, b.dataset.bin); };
+      b.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && sel !== null) { e.preventDefault(); moveTo(sel, b.dataset.bin); } }; });
+    $("#tray", el).onclick = e => { if (sel !== null && !e.target.closest(".dcard")) moveTo(sel, ""); };
+    // Ziehen (Pointer Events = Maus + Touch + Stift)
+    Object.values(els).forEach(d => {
+      const i = +d.dataset.i;
+      d.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectCard(i); } };
+      d.addEventListener("pointerdown", e => {
+        if (fixed[i] || e.button > 0) return;
+        e.preventDefault(); d.setPointerCapture && d.setPointerCapture(e.pointerId);
+        const sx = e.clientX, sy = e.clientY, r = d.getBoundingClientRect(); let ghost = null, over = null;
+        const mv = ev => {
+          if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
+          if (!ghost) { ghost = d.cloneNode(true); ghost.classList.add("ghost"); ghost.style.width = r.width + "px"; document.body.appendChild(ghost); d.classList.add("dragging"); }
+          ghost.style.left = (ev.clientX - r.width / 2) + "px"; ghost.style.top = (ev.clientY - r.height / 2) + "px";
+          const t = document.elementFromPoint(ev.clientX, ev.clientY), b = t && t.closest(".bin,.tray");
+          if (over && over !== b) over.classList.remove("over"); over = b; if (b && b.classList.contains("bin")) b.classList.add("over");
+        };
+        const up = ev => {
+          d.removeEventListener("pointermove", mv); d.removeEventListener("pointerup", up); d.removeEventListener("pointercancel", up);
+          if (over) over.classList.remove("over");
+          if (ghost) { ghost.remove(); d.classList.remove("dragging");
+            const t = document.elementFromPoint(ev.clientX, ev.clientY), b = t && t.closest(".bin,.tray");
+            if (b && el.contains(b)) moveTo(i, b.dataset.bin || ""); }
+          else selectCard(i);
+        };
+        d.addEventListener("pointermove", mv); d.addEventListener("pointerup", up); d.addEventListener("pointercancel", up);
+      });
+    });
+    $("#chk", el).onclick = () => {
+      let firstMsg = null; const wrong = [];
+      cards.forEach(c => { if (fixed[c.i]) return;
+        if (place[c.i] === c.bin) { fixed[c.i] = true; els[c.i].classList.add("fixedok"); els[c.i].removeAttribute("tabindex"); }
+        else { wrong.push(c.i); if (!firstMsg) {
+          if (c.bin === "x" && P.wrongFake) firstMsg = P.wrongFake;
+          else firstMsg = (P.wrongToBin && P.wrongToBin[place[c.i]]) || P.wrongDefault || "Prüfe diese Karte noch einmal."; } } });
+      if (!wrong.length) {
+        const ex = cards.filter(c => c.why).map(c => `<li>${c.fig ? "" : md(c.t) + ": "}${md(c.why)}</li>`).join("");
+        return solve(P, ex ? `<ul>${ex}</ul>` : "");
+      }
+      wrong.forEach(i => { moveTo(i, ""); els[i].classList.add("shake"); setTimeout(() => els[i].classList.remove("shake"), 700); });
+      feedback($("#fb"), "hint", `${cards.length - wrong.length} von ${cards.length} richtig – die richtigen bleiben liegen. ${wrong.length === 1 ? "Eine Karte ist" : wrong.length + " Karten sind"} zurück in der Ablage.<br>${md(firstMsg)}`);
+    };
+  }
+};
+
+/* --- Ordnen (antippen in Reihenfolge) --- */
+COMP.order = {
+  render(el, P) {
+    const items = P.items; let picked = []; const order = shuffle(items.map((x, i) => i));
+    el.innerHTML = `<p class="task">${md(P.text)}</p>
+      <div class="ordslots" id="slots"></div>
+      <div class="row center" id="pool">${order.map(i => `<button class="btn" data-i="${i}" style="min-width:72px;min-height:64px">${F(...items[i].split("/"))}</button>`).join("")}</div>
+      <div class="row center" style="margin-top:12px"><button class="btn ghost" id="undo">↺ Zurück</button><button class="btn primary" id="chk" disabled>✔ Prüfen</button></div>`;
+    const draw = () => {
+      $("#slots", el).innerHTML = items.map((x, k) => (k ? `<span class="lt">&lt;</span>` : "") + `<div class="ordslot ${picked[k] !== undefined ? "filled" : ""}">${picked[k] !== undefined ? F(...items[picked[k]].split("/")) : ""}</div>`).join("");
+      $$("#pool button", el).forEach(b => b.disabled = picked.includes(+b.dataset.i));
+      $("#chk", el).disabled = picked.length < items.length;
+    };
+    $$("#pool button", el).forEach(b => b.onclick = () => { picked.push(+b.dataset.i); draw(); });
+    $("#undo", el).onclick = () => { picked.pop(); draw(); };
+    $("#chk", el).onclick = () => {
+      const v = picked.map(i => items[i]);
+      for (let k = 0; k + 1 < v.length; k++) {
+        const [a, b] = v[k].split("/").map(Number), [c, d] = v[k + 1].split("/").map(Number);
+        if (a * d > c * b) {
+          let why;
+          if (b === d) why = "Gleicher Nenner: Der Bruch mit dem größeren Zähler ist größer.";
+          else if (a === c) why = "Gleicher Zähler: Der Bruch mit dem <b>kleineren</b> Nenner ist größer – die Teile sind größer.";
+          else { const l = b * d / gcd(b, d); why = `Bringe beide auf den Nenner ${l}: ${F(a * l / b, l)} und ${F(c * l / d, l)}.`; }
+          feedback($("#fb"), "hint", `${F(a, b)} &lt; ${F(c, d)} stimmt nicht. ${why}`);
+          picked = []; draw(); return;
+        }
+      }
+      solve(P);
+    };
+    draw();
+  }
+};
+
+/* --- Färben --- */
+COMP.paint = {
+  render(el, P) {
+    const N = P.cols * P.rows, [z, n] = P.target, on = new Set();
+    el.innerHTML = `<p class="task">${md(P.text || `Färbe genau [[${z}/${n}]] des Skins.`)}</p>
+      <div class="grid" id="grid" style="grid-template-columns:repeat(${P.cols},1fr);width:min(${P.cols * 66}px,100%)"></div>
+      <div class="counter" aria-live="polite"><span>Gefärbt: <b id="cnt">0</b> von ${N} Pixeln</span><span id="cf"></span></div>
+      <div class="row center" style="margin-top:8px"><button class="btn ghost" id="clr">↺ Leeren</button><button class="btn primary" id="chk">✔ Prüfen</button></div>`;
+    const g = $("#grid", el);
+    for (let i = 0; i < N; i++) { const c = document.createElement("button"); c.className = "cell"; c.setAttribute("aria-label", "Pixel " + (i + 1)); c.setAttribute("aria-pressed", "false");
+      c.onclick = () => { on.has(i) ? on.delete(i) : on.add(i); c.classList.toggle("on"); c.setAttribute("aria-pressed", on.has(i)); upd(); }; g.appendChild(c); }
+    const upd = () => { $("#cnt", el).textContent = on.size; $("#cf", el).innerHTML = on.size ? "= " + F(on.size, N) : ""; };
+    $("#clr", el).onclick = () => { on.clear(); $$(".cell", g).forEach(c => { c.classList.remove("on"); c.setAttribute("aria-pressed", "false"); }); upd(); };
+    $("#chk", el).onclick = () => {
+      const k = on.size, fb = $("#fb"), need = N * z / n, unit = N / n;
+      if (k === need) return P.onSolve ? P.onSolve() : solve(P, ` ${F(k, N)} = ${F(z, n)}. Die Form ist egal – nur die Menge zählt.`);
+      if (k === z && z !== need) return feedback(fb, "hint", `Du hast ${z} Pixel gefärbt – so viele, wie der Zähler sagt. Aber das Raster hat ${N} Pixel, nicht ${n}. Wie viele Pixel sind ${F(1, n)}?`);
+      if (k === unit && z > 1) return feedback(fb, "hint", `Das ist genau ${F(1, n)}. Der <b>Zähler</b> sagt: Du brauchst ${z} solche Teile.`);
+      if (k === N - need) return feedback(fb, "hint", "Du hast genau den <b>anderen</b> Teil gefärbt. Tausche gefärbt und ungefärbt!");
+      if (k < need) return feedback(fb, "hint", `Noch zu wenig: ${F(k, N)}. Wie viele Pixel sind ${F(1, n)} von ${N}?`);
+      feedback(fb, "hint", `Zu viel: ${F(k, N)}. Wie viele Pixel sind ${F(1, n)} von ${N}?`);
+    };
+  }
+};
+
+/* --- Das Ganze finden --- */
+COMP.whole = {
+  render(el, P) {
+    const N = P.cols * P.rows, piece = new Set(P.piece), on = new Set(), [a, b] = P.frac, pc = P.piece.length, whole = pc * b / a;
+    el.innerHTML = `<p class="task">${md(P.text)}</p>
+      <div class="grid" id="grid" style="grid-template-columns:repeat(${P.cols},1fr);width:min(${P.cols * 60}px,100%)"></div>
+      <div class="counter" aria-live="polite"><span>Item: ${pc} Pixel (orange) · dazu gefärbt: <b id="cnt">0</b> · Ganzes: <b id="tot">${pc}</b> Pixel</span></div>
+      <div class="row center" style="margin-top:8px"><button class="btn ghost" id="clr">↺ Leeren</button><button class="btn primary" id="chk">✔ Prüfen</button></div>`;
+    const g = $("#grid", el);
+    for (let i = 0; i < N; i++) { const c = document.createElement("button"); c.className = "cell" + (piece.has(i) ? " piece" : "");
+      c.setAttribute("aria-label", piece.has(i) ? "Item-Pixel (fest)" : "Pixel " + (i + 1)); if (!piece.has(i)) c.setAttribute("aria-pressed", "false");
+      c.onclick = () => { if (piece.has(i)) return; on.has(i) ? on.delete(i) : on.add(i); c.classList.toggle("on"); c.setAttribute("aria-pressed", on.has(i)); upd(); }; g.appendChild(c); }
+    const upd = () => { $("#cnt", el).textContent = on.size; $("#tot", el).textContent = pc + on.size; };
+    $("#clr", el).onclick = () => { on.clear(); $$(".cell.on", g).forEach(c => c.classList.remove("on")); upd(); };
+    $("#chk", el).onclick = () => {
+      const t = pc + on.size, fb = $("#fb");
+      if (t === whole) return solve(P, ` Das Ganze hat ${whole} Pixel: ${F(pc, whole)} = ${F(a, b)}.`);
+      if (t === pc * b && a > 1) return feedback(fb, "hint", `Du hast so gerechnet, als wäre das Item ${F(1, b)}. Es ist aber ${F(a, b)}! Wie viele Pixel sind dann ${F(1, b)}?`);
+      if (on.size === whole) return feedback(fb, "hint", "Das orange Item gehört schon zum Ganzen dazu! Zähle es mit.");
+      feedback(fb, "hint", `Dein Ganzes hat ${t} Pixel. Dann wäre das Item ${F(pc, t)}${gcd(pc, t) > 1 ? " = " + F(pc / gcd(pc, t), t / gcd(pc, t)) : ""} – gesucht ist ${F(a, b)}. Wie viele Pixel sind ${F(1, b)}?`);
+    };
+  }
+};
+
+/* --- Ausdruck mit Lücken (für Schmiede, Verfeinern, Serie) --- */
+function exprHtml(expr) {
+  return `<div class="expr">${expr.map(t => {
+    if (typeof t === "string") return `<span>${md(t)}</span>`;
+    if (t.box) return numInput();
+    const [a, b] = t.f;
+    if (a !== "?" && b !== "?") return F(a, b);
+    const part = x => x === "?" ? numInput() : `<span class="fixed">${x}</span>`;
+    return `<span class="ifrac">${part(a)}<span class="bar"></span>${part(b)}</span>`;
+  }).join("")}</div>`;
+}
+
+/* --- Verfeinern / Vergröbern --- */
+COMP.refine = {
+  render(el, P) {
+    const fein = P.dir === "fein";
+    const [a, b] = P.from;
+    const divs = fein ? [1, 2, 3, 4, 5, 6] : [...Array(b).keys()].map(x => x + 1).filter(g => b % g === 0 && g < b);
+    let k = 1;
+    const drawStrip = () => {
+      let parts, colored, thick; const W = 540, H = 60;
+      if (fein) { parts = b * k; colored = a * k; thick = b; } else { parts = b / k; colored = a / k; thick = parts; }
+      const ok = fein || Number.isInteger(colored);
+      let r = "";
+      if (fein || ok) { for (let i = 0; i < parts; i++) r += `<rect x="${i * W / parts}" y="0" width="${W / parts}" height="${H}" fill="${i < colored ? "url(#pb" + figId + ")" : COL.empty}" stroke="${COL.stroke}" stroke-width="1.5"/>`; }
+      else { for (let i = 0; i < b; i++) r += `<rect x="${i * W / b}" y="0" width="${W / b}" height="${H}" fill="${i < a ? "url(#pb" + figId + ")" : COL.empty}" stroke="${COL.stroke}" stroke-width="1.5"/>`;
+        for (let g = 0; g <= b; g += k) r += `<line x1="${g * W / b}" y1="0" x2="${g * W / b}" y2="${H}" stroke="${COL.o}" stroke-width="4"/>`; }
+      if (fein) for (let i = 0; i <= thick; i++) r += `<line x1="${i * W / thick}" y1="0" x2="${i * W / thick}" y2="${H}" stroke="#eef3fb" stroke-width="4"/>`;
+      $("#strip", el).innerHTML = `<svg class="rstrip" viewBox="-3 -3 ${W + 6} ${H + 6}" role="img" aria-label="Streifen mit ${fein ? parts : b} Teilen">${patDefs(figId)}${r}</svg>`;
+      $("#info", el).innerHTML = fein ? `Jedes Stück in <b>${k}</b> Teil${k > 1 ? "e" : ""} zerlegt → <b>${parts}</b> Teile insgesamt`
+        : ok ? `Je <b>${k}</b> Teil${k > 1 ? "e" : ""} zusammengefasst → <b>${parts}</b> Teile insgesamt` : "";
+      $("#warn", el).textContent = ok ? "" : `Je ${k} zusammenfassen passt nicht: Die ${a} gefärbten Teile gehen nicht in ${k}er-Gruppen auf.`;
+    };
+    const expr = fein ? [{ f: [a, b] }, "=", { f: ["?", P.to] }, " erweitert mit ", { box: true }]
+                      : [{ f: [a, b] }, "=", { f: ["?", "?"] }, " gekürzt mit ", { box: true }];
+    el.innerHTML = `<p class="task">${md(P.text)}</p><div id="strip"></div><div class="muted" id="info" style="text-align:center"></div>
+      <div class="slider keep"><span class="muted">${fein ? "Verfeinern:" : "Zusammenfassen:"}</span>
+        <div class="seg" role="group" aria-label="${fein ? "Jedes Stück zerlegen in" : "Teile zusammenfassen je"}">${divs.map(d => `<button class="keep" data-k="${d}" aria-pressed="${d === 1}">${fein ? "×" : "je "}${d}</button>`).join("")}</div></div>
+      <div class="warnline" id="warn"></div>
+      ${exprHtml(expr)}
+      <div class="row center"><button class="btn primary" id="chk">✔ Prüfen</button></div>`;
+    figId++;
+    $$(".seg button", el).forEach(btn => btn.onclick = () => { k = +btn.dataset.k; $$(".seg button", el).forEach(x => x.setAttribute("aria-pressed", x === btn)); drawStrip(); });
+    drawStrip();
+    $("#chk", el).onclick = () => {
+      const v = $$(".expr .num", el).map(intOf), fb = $("#fb");
+      if (fein) {
+        const [num, f] = v, [an, af] = P.answer;
+        if (num === an && f === af) return solve(P);
+        if (num === an) return feedback(fb, "hint", `Der Zähler stimmt! Mit welcher Zahl wurde der Nenner ${b} multipliziert, um ${P.to} zu bekommen?`);
+        if (num === a + (P.to - b)) return feedback(fb, "hint", "Du hast addiert. Erweitern heißt: Zähler und Nenner mit <b>derselben Zahl malnehmen</b>.");
+        if (f === P.to / b) return feedback(fb, "hint", `Der Faktor ${f} stimmt! Nimm jetzt auch den Zähler ${a} mal ${f}.`);
+        return feedback(fb, "hint", `Stell den Regler so ein, dass der Streifen ${P.to} Teile hat. Wie viele davon sind gefärbt?`);
+      }
+      const [z, n, f] = v, [rz, rn, rf] = P.answer;
+      if (z === rz && n === rn && f === rf) return solve(P);
+      if (!isNaN(z) && !isNaN(n) && n > 0 && eqFrac(z, n, a, b) && (z !== rz)) return feedback(fb, "hint", `${F(z, n)} hat den richtigen Wert – aber es geht <b>noch gröber</b>! Fasse größere Gruppen zusammen.`);
+      if (z === rz && n === rn) return feedback(fb, "hint", `Der Bruch stimmt! Durch welche Zahl hast du Zähler und Nenner geteilt? ${a} : ? = ${rz}`);
+      if (!isNaN(z) && !isNaN(n) && z === a - (b - n)) return feedback(fb, "hint", "Du hast subtrahiert. Kürzen heißt: Zähler und Nenner durch <b>dieselbe Zahl teilen</b>.");
+      feedback(fb, "hint", "Wähle eine Gruppengröße, bei der alles aufgeht. Dann zähle die neuen Teile.");
+    };
+  }
+};
+
+/* --- Trainingsserie (Zufallsaufgaben) --- */
+const GEN = {
+  read() {
+    const C = SERIES.read, shape = pickOne(C.shapes); let fspec, N;
+    if (shape === "grid") { const [c, r] = pickOne([[3, 2], [4, 2], [3, 3], [4, 3], [5, 2], [4, 4], [5, 3], [6, 2], [6, 3], [5, 4]]); N = c * r;
+      fspec = { t: "grid", c, r, on: [], color: "b" }; }
+    else if (shape === "strip") { N = rnd(Math.max(4, C.minN), 12); fspec = { t: "strip", n: N, k: 0, color: "b" }; }
+    else { N = pickOne([4, 6, 8, 9, 10, 12]); fspec = { t: "circle", n: N, k: 0, color: "b" }; }
+    const red = Math.random() < C.reducibleShare; let k, tries = 0;
+    do { k = rnd(1, N - 1); tries++; } while (tries < 40 && (red ? gcd(k, N) === 1 : false));
+    if (shape === "grid") fspec.on = shuffle([...Array(N).keys()]).slice(0, k); else fspec.k = k;
+    const g = gcd(k, N);
+    return { type: "lock", mode: "reduced", fig: fspec, answer: [k, N], text: "Welcher Anteil ist gefärbt? Gib ihn **vollständig gekürzt** an.",
+      sol: `${k} von ${N} → ${F(k, N)}${g > 1 ? " = " + F(k / g, N / g) : ""}` };
+  },
+  paint() {
+    const C = SERIES.paint; let c, r, d, z, tries = 0;
+    do { [c, r] = pickOne(C.totals); const N = c * r; d = pickOne(C.dens.filter(x => N % x === 0 && x < N)); tries++; } while (!d && tries < 30);
+    do { z = rnd(1, d - 1); } while (gcd(z, d) !== 1);
+    return { type: "paint", cols: c, rows: r, target: [z, d], text: `Färbe genau [[${z}/${d}]] des Rasters.`, sol: `${c * r} : ${d} = ${c * r / d}, mal ${z} = ${c * r / d * z} Pixel.` };
+  },
+  forge() {
+    const C = SERIES.forge, kind = pickOne(C.kinds); let b, a; do { b = rnd(2, 9); a = rnd(1, b - 1); } while (gcd(a, b) !== 1);
+    const k = rnd(2, C.maxFactor);
+    if (kind === "up") return { type: "expr", expr: [{ f: [a, b] }, "=", { f: ["?", b * k] }], answer: [a * k], text: "Erweitere:", sol: `${F(a, b)} = ${F(a * k, b * k)} (mal ${k})` };
+    if (kind === "upNum") return { type: "expr", expr: [{ f: [a, b] }, "=", { f: [a * k, "?"] }], answer: [b * k], text: "Erweitere:", sol: `${F(a, b)} = ${F(a * k, b * k)} (mal ${k})` };
+    if (kind === "down") return { type: "expr", expr: [{ f: [a * k, b * k] }, "=", { f: ["?", "?"] }], answer: [a, b], reduced: true, text: "Kürze **vollständig**:", sol: `${F(a * k, b * k)} = ${F(a, b)} (durch ${k})` };
+    return { type: "expr", expr: [{ f: [a, b] }, "=", { f: [a * k, b * k] }, "· erweitert mit", { box: true }], answer: [k], text: "Mit welcher Zahl wurde erweitert?", sol: `${a} · ${k} = ${a * k} und ${b} · ${k} = ${b * k}` };
+  }
+};
+function checkExpr(item, v) {
+  if (item.reduced) {
+    const [z, n] = v, [a, b] = item.answer;
+    if (z === a && n === b) return true;
+    if (!isNaN(z) && !isNaN(n) && n > 0 && eqFrac(z, n, a, b)) return `${F(z, n)} hat den richtigen Wert – aber es geht <b>noch weiter</b>. Kürze vollständig!`;
+    if (!isNaN(z) && !isNaN(n) && n > 0 && eqFrac(z, n, b, a)) return "Hast du Zähler und Nenner vertauscht?";
+    return "Teile Zähler <b>und</b> Nenner durch dieselbe Zahl. Probiere den größten gemeinsamen Teiler.";
+  }
+  if (v.every((x, i) => x === item.answer[i])) return true;
+  const fr = item.expr[0].f, tgt = item.expr[2].f;
+  if (tgt && tgt.includes("?") && v[0] === (tgt[0] === "?" ? fr[0] + (tgt[1] - fr[1]) : fr[1] + (tgt[0] - fr[0]))) return "Du hast addiert. Erweitern heißt: mit <b>derselben Zahl malnehmen</b>.";
+  return "Vergleiche die bekannten Zahlen: Mit welcher Zahl wurde malgenommen? Mach dasselbe mit der anderen Zahl.";
+}
+COMP.series = {
+  render(el, P) {
+    const st = S.series[P.key] || (S.series[P.key] = { n: 0, item: null }); save();
+    const next = () => { st.item = GEN[P.gen](); save(); draw(); };
+    const draw = () => {
+      if (st.n >= P.count) { el.innerHTML = `<p class="task">${md(P.text)}</p><div class="progress">${"<i class='on'></i>".repeat(P.count)}</div>`; return; }
+      if (!st.item) { st.item = GEN[P.gen](); save(); }
+      const it = st.item;
+      el.innerHTML = `<p class="task">${md(P.text)}</p>
+        <div class="progress" aria-label="${st.n} von ${P.count} geschafft">${Array.from({ length: P.count }, (_, i) => `<i class="${i < st.n ? "on" : ""}"></i>`).join("")}</div>
+        <div class="muted" style="text-align:center">Aufgabe ${st.n + 1} von ${P.count}</div><div id="item"></div>`;
+      const box = $("#item", el);
+      const ok = () => { st.n++; st.item = null; save(); beep(true); $("#fb").className = "feedback";
+        if (st.n >= P.count) { draw(); solve(P); } else { feedback($("#fb"), "good", `Richtig! ${it.sol}`); setTimeout(() => { const f = $("#fb"); if (f && f.classList.contains("good")) f.className = "feedback"; }, 1600); next(); } };
+      if (it.type === "expr") {
+        box.innerHTML = `<p style="text-align:center;font-weight:600">${md(it.text)}</p>${exprHtml(it.expr)}<div class="row center"><button class="btn primary" id="ichk">✔ Prüfen</button></div>`;
+        const go = () => { const r = checkExpr(it, $$(".num", box).map(intOf)); if (r === true) ok(); else feedback($("#fb"), "hint", r); };
+        $("#ichk", box).onclick = go; $$(".num", box).forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") go(); }));
+        const f = $(".num", box); if (f) f.focus({ preventScroll: true });
+      } else COMP[it.type].render(box, Object.assign({}, it, { onSolve: ok }));
+    };
+    draw();
+  }
+};
+
+/* --- System-Info: Streifen übereinanderlegen --- */
+function stripSvg(n, k, label, color = "b") {
+  const W = 480, H = 44; let r = ""; const id = ++figId;
+  for (let i = 0; i < n; i++) r += `<rect x="${i * W / n}" y="0" width="${W / n}" height="${H}" fill="${i < k ? `url(#p${color}${id})` : COL.empty}" stroke="${COL.stroke}" stroke-width="2"/>`;
+  return `<div class="row" style="flex-wrap:nowrap;justify-content:center"><span style="min-width:64px;text-align:right">${label}</span><svg viewBox="-2 -2 ${W + 4} ${H + 4}" style="width:min(480px,70vw)" role="img" aria-label="Streifen ${k} von ${n}">${patDefs(id)}${r}</svg></div>`;
+}
+COMP.explore = {
+  render(el, P) {
+    let si = 0; const st = { z1: 7, z2: 4, n1: 4, n2: 6, k1: 1, k2: 1 };
+    const sign = (a, b, c, d) => a * d > c * b ? "&gt;" : a * d < c * b ? "&lt;" : "=";
+    const stepper = (key, lbl, min, max) => `<span class="stepper keep"><span class="muted">${lbl}</span><button class="keep" data-k="${key}" data-d="-1" aria-label="${lbl} kleiner">−</button><b style="min-width:1.6em;text-align:center;font-family:var(--mono)">${st[key]}</b><button class="keep" data-k="${key}" data-d="1" aria-label="${lbl} größer">+</button></span>`;
+    const lim = { z1: [0, 12], z2: [0, 12], n1: [3, 12], n2: [3, 12], k1: [1, 8], k2: [1, 6] };
+    const draw = () => {
+      const s = P.screens[si]; let play = "";
+      if (s.kind === "sameDen") play = stripSvg(12, st.z1, F(st.z1, 12)) + stripSvg(12, st.z2, F(st.z2, 12), "o") +
+        `<div class="cmp">${F(st.z1, 12)}<span class="sign">${sign(st.z1, 12, st.z2, 12)}</span>${F(st.z2, 12)}</div><div class="row center">${stepper("z1", "Zähler oben", 0, 12)}${stepper("z2", "Zähler unten", 0, 12)}</div>`;
+      if (s.kind === "sameNum") play = stripSvg(st.n1, 3, F(3, st.n1)) + stripSvg(st.n2, 3, F(3, st.n2), "o") +
+        `<div class="cmp">${F(3, st.n1)}<span class="sign">${sign(3, st.n1, 3, st.n2)}</span>${F(3, st.n2)}</div><div class="row center">${stepper("n1", "Nenner oben", 3, 12)}${stepper("n2", "Nenner unten", 3, 12)}</div>`;
+      if (s.kind === "common") { const d1 = 3 * st.k1, d2 = 4 * st.k2, same = d1 === d2;
+        play = stripSvg(d1, 2 * st.k1, F(2 * st.k1, d1)) + stripSvg(d2, 3 * st.k2, F(3 * st.k2, d2), "o") +
+        `<div class="cmp">${same ? `${F(2 * st.k1, d1)}<span class="sign">&lt;</span>${F(3 * st.k2, d2)}` : `<span class="muted">Die Teile sind noch verschieden groß.</span>`}</div>
+        ${same ? `<div class="row center"><span class="tag" style="color:var(--blue);border-color:var(--blue)">✔ Gleich große Teile: ${d1}tel!</span></div>` : ""}
+        <div class="row center">${stepper("k1", "Drittel zerlegen ×", 1, 8)}${stepper("k2", "Viertel zerlegen ×", 1, 6)}</div>`; }
+      el.innerHTML = `<p class="task">${md(s.title)}</p><p>${md(s.text)}</p>${play}
+        <div class="step"><div class="q">${md(s.q)}</div><div class="opts">${s.options.map((o, i) => `<button class="opt" data-o="${i}">${md(o.t)}</button>`).join("")}</div></div>`;
+      $$(".stepper button", el).forEach(b => b.onclick = () => { const k = b.dataset.k; st[k] = Math.min(lim[k][1], Math.max(lim[k][0], st[k] + +b.dataset.d)); draw(); });
+      $$(".opt", el).forEach(b => b.onclick = () => { const o = s.options[+b.dataset.o];
+        if (o.ok) { beep(true); $("#fb").className = "feedback"; si++; if (si >= P.screens.length) { si--; b.classList.add("ok"); solve(P, `<br>Regeln: Gleicher Nenner → größerer Zähler gewinnt. Gleicher Zähler → kleinerer Nenner gewinnt. Sonst: auf einen gemeinsamen Nenner verfeinern (kgV).`); } else draw(); }
+        else { b.classList.add("no"); feedback($("#fb"), "hint", md(o.fb)); } });
+    };
+    draw();
+  }
+};
+
+/* --- Ägyptische Brüche --- */
+COMP.egypt = {
+  render(el, P) {
+    const [ta, tb] = P.target, need = P.need || 1, terms = P.terms || 2;
+    const unitBox = 12 % tb === 0 ? 12 : tb;
+    const rowHtml = r => `<div class="expr" data-row="${r}">${F(ta, tb)}<span>=</span>${Array.from({ length: terms }, (_, i) => (i ? "<span>+</span>" : "") + `<span class="ifrac"><span class="fixed">1</span><span class="bar"></span>${numInput()}</span>`).join("")}</div>`;
+    el.innerHTML = `<p class="task">${md(P.text)}</p>
+      <div id="eg"></div>
+      ${Array.from({ length: need }, (_, r) => (need > 1 ? `<div class="muted" style="text-align:center">Lösung ${r + 1}</div>` : "") + rowHtml(r)).join("")}
+      <div class="row center"><button class="btn primary" id="chk">✔ Prüfen</button></div>`;
+    const drawStrip = () => {
+      const W = 480, H = 44, n = unitBox, id = ++figId; let r = "", pos = 0;
+      const first = $$('.expr[data-row="0"] .num', el).map(intOf);
+      const cols = ["b", "o", "b"];
+      first.forEach((d, j) => { if (d > 0 && n % d === 0) { const w = n / d; for (let i = 0; i < w && pos < n; i++, pos++) r += `<rect x="${pos * W / n}" y="0" width="${W / n}" height="${H}" fill="url(#p${cols[j]}${id})" stroke="${COL.stroke}" stroke-width="1.5"/>`; } });
+      for (; pos < n; pos++) r += `<rect x="${pos * W / n}" y="0" width="${W / n}" height="${H}" fill="${COL.empty}" stroke="${COL.stroke}" stroke-width="1.5"/>`;
+      const tgt = ta * n / tb; r += `<line x1="${tgt * W / n}" y1="-6" x2="${tgt * W / n}" y2="${H + 6}" stroke="#eef3fb" stroke-width="4"/>`;
+      $("#eg", el).innerHTML = `<div class="muted" style="text-align:center">${n}er-Streifen: Die weiße Linie markiert ${F(ta, tb)} = ${tgt} Kästchen. Deine Stammbrüche (Lösung 1) werden eingefärbt.</div><div class="fig"><svg viewBox="-3 -8 ${W + 6} ${H + 16}" style="width:min(480px,90%)" role="img" aria-label="${n}er-Streifen">${patDefs(id)}${r}</svg></div>`;
+    };
+    $$('.num', el).forEach(i => i.addEventListener("input", drawStrip)); drawStrip();
+    $("#chk", el).onclick = () => {
+      const fb = $("#fb"), sols = [];
+      for (let r = 0; r < need; r++) {
+        const d = $$(`.expr[data-row="${r}"] .num`, el).map(intOf);
+        if (d.some(x => isNaN(x) || x < 1)) return feedback(fb, "hint", "Trage in jede Lücke einen Nenner ein (eine ganze Zahl ab 1).");
+        if (new Set(d).size !== d.length) return feedback(fb, "hint", "Kein Stammbruch darf doppelt vorkommen – das war die Regel der Ägypter!");
+        let num = 0, den = 1; d.forEach(x => { num = num * x + den; den *= x; const g = gcd(num, den); num /= g; den /= g; });
+        if (!eqFrac(num, den, ta, tb)) return feedback(fb, "hint", `${need > 1 ? "Lösung " + (r + 1) + ": " : ""}Deine Summe ist ${F(num, den)}. Das ist ${num * tb > ta * den ? "zu viel" : "zu wenig"}. Zähle im Streifen nach!`);
+        sols.push(d.slice().sort((x, y) => x - y).join(","));
+      }
+      if (need > 1 && new Set(sols).size < need) return feedback(fb, "hint", "Beide Lösungen sind gleich. Finde eine <b>andere</b> Zerlegung!");
+      solve(P);
+    };
+  }
+};
+
+/* =====================================================================
+   LEHRKRAFT-MODUS (5× aufs Logo tippen, PIN steht in levels.js)
+   ===================================================================== */
+let taps = [];
+function logoTap() {
+  const now = Date.now(); taps = taps.filter(t => now - t < 3000); taps.push(now);
+  if (taps.length >= 5) { taps = []; openPin(); }
+}
+function openPin() {
+  const o = document.createElement("div"); o.className = "overlay"; o.id = "ov";
+  o.innerHTML = `<div class="modal" style="max-width:420px" role="dialog" aria-label="Lehrkraft-Zugang"><h2>🔒 Lehrkraft-Modus</h2>
+    <label class="lbl" for="pin">PIN</label><input class="txt" id="pin" type="password" inputmode="numeric" autocomplete="off">
+    <div class="row" style="margin-top:12px"><button class="btn primary" id="pok">Öffnen</button><button class="btn ghost" id="pcl">Abbrechen</button></div>
+    <div class="feedback" id="pfb"></div></div>`;
+  document.body.appendChild(o); $("#pin").focus();
+  const go = () => { if ($("#pin").value === LEHRER_PIN) { o.remove(); openTeacher(); } else feedback($("#pfb"), "hint", "Falsche PIN."); };
+  $("#pok").onclick = go; $("#pin").onkeydown = e => { if (e.key === "Enter") go(); }; $("#pcl").onclick = () => o.remove();
+}
+function solText(lv, pz) {
+  const base = LEVELS[lv].puzzles[pz];
+  if (base.type === "series") return md(base.solution) + " <i>(Aufgaben werden zufällig erzeugt; die Lösung erscheint nach jeder Aufgabe.)</i>";
+  if (base.type === "explore") return "Freie Erkundung, keine Sterne. Antworten: größerer Zähler · kleinerer Nenner · Zwölftel (kgV).";
+  const n = base.variants ? base.variants.length : 1, cur = S.vars[lv + "-" + pz];
+  let out = "";
+  for (let i = 0; i < n; i++) {
+    const save0 = S.vars[lv + "-" + pz]; S.vars[lv + "-" + pz] = { vi: i };
+    const P = getPuzzle(lv, pz); S.vars[lv + "-" + pz] = save0;
+    let det = md(P.solution || "");
+    if (P.type === "order") det = P.items.slice().sort((x, y) => fval(x) - fval(y)).map(x => F(...x.split("/"))).join(" &lt; ") + " · " + det;
+    if (P.type === "lock") det = F(...P.answer) + " · " + det;
+    if (P.type === "choice") det = P.steps.map((s, k) => `${k + 1}) ${md(s.options.find(o => optOk(o, P)).t)}`).join(" · ") + "<br>" + det;
+    out += `<div>${n > 1 ? `<span class="cur">${cur && cur.vi === i ? "▶ AKTUELL " : ""}Variante ${i + 1}:</span> ` : ""}${det}</div>`;
+  }
+  if (base.type === "sort") { const cards = (base.variants ? base.variants[0].cards : base.cards);
+    const bins = base.bins || base.variants[0].bins;
+    out += base.variants ? base.variants.map((v, i) => `<div><span class="cur">Variante ${i + 1}:</span> ${v.bins.map(b => `${md(b.label)}: ${v.cards.filter(c => c.bin === b.id).map(c => md(c.t)).join(", ")}`).join(" · ")}</div>`).join("")
+      : `<div>${bins.map(b => `<b>${md(b.label)}</b>: ${cards.filter(c => c.bin === b.id).map(c => c.fig ? "Figur" : md(c.t)).join(" | ")}`).join("<br>")}</div>`; }
+  return out;
+}
+function openTeacher(tab = "sol") {
+  const o = document.createElement("div"); o.className = "overlay"; o.id = "tov";
+  const tabs = [["sol", "Lösungen"], ["ctl", "Steuerung"], ["dec", "Prüfcode"], ["plan", "Zeitplan"]];
+  let body = "";
+  if (tab === "sol") body = LEVELS.map((L, lv) => `<h3>${L.bonus ? "Bonus" : "Level " + L.id}: ${esc(L.name)} <span class="muted" style="font-size:.85rem">(${esc(L.topic)}, AFB ${L.afb})</span></h3>` +
+      L.puzzles.map((p, pz) => `<div class="sol"><b>${pz + 1}. ${esc(p.title)}</b> <span class="muted">[${p.type}]</span><br>${solText(lv, pz)}</div>`).join("")).join("");
+  if (tab === "ctl") body = `<p>Spielstand dieses Geräts: <b>${esc(S.name || "–")}</b>, Phase „${S.phase}“, Level ${S.lv + 1}, Rätsel ${S.pz + 1}, Sterne ${totalStars()}/15.</p>
+      <h3>Zu Level springen</h3><div class="row">${LEVELS.map((L, i) => `<button class="btn small" data-jump="${i}">${L.bonus ? "Bonus" : "Level " + L.id}</button>`).join("")}
+      <button class="btn small" data-jump="pw">Passwort</button><button class="btn small" data-jump="cert">Urkunde</button></div>
+      <p class="muted" style="font-size:.9rem">Beim Sprung gelten alle vorherigen Level als geschafft (mit ihren bisherigen Sternen).</p>
+      <h3>Aktuelles Rätsel</h3><div class="row"><button class="btn small" id="tsolve">Als gelöst markieren (ohne Sternabzug)</button></div>
+      <h3>Zurücksetzen</h3><div class="row"><button class="btn small orange" id="treset">Spielstand auf diesem Gerät löschen</button></div>`;
+  if (tab === "dec") body = `<label class="lbl" for="dcode">Prüfcode von der Urkunde</label><input class="txt" id="dcode" placeholder="SR-XXXXX" autocomplete="off" style="max-width:280px">
+      <div class="row" style="margin-top:10px"><button class="btn primary" id="dgo">Prüfen</button></div><div id="dout" style="margin-top:12px"></div>`;
+  if (tab === "plan") body = `<table class="t"><tr><th>Phase</th><th>Minuten</th></tr>${ZEITPLAN.map(z => `<tr><td>${z[0]}</td><td>${z[1]}</td></tr>`).join("")}</table>
+      <p class="muted">Ränge: ${RAENGE.map(r => `${r.name} ab ${r.min} ★`).join(" · ")}. Der Spielstand bleibt auf dem Gerät gespeichert – Weiterspielen in der nächsten Stunde ist möglich.</p>`;
+  o.innerHTML = `<div class="modal" role="dialog" aria-label="Lehrkraft-Modus"><div class="row" style="justify-content:space-between"><h2>🧑‍🏫 Lehrkraft-Modus</h2><button class="btn small" id="tcl">✕ Schließen</button></div>
+    <div class="tabs">${tabs.map(t => `<button class="btn small" data-tab="${t[0]}" aria-pressed="${t[0] === tab}">${t[1]}</button>`).join("")}</div>${body}</div>`;
+  document.body.appendChild(o);
+  $("#tcl").onclick = () => o.remove();
+  $$("[data-tab]", o).forEach(b => b.onclick = () => { o.remove(); openTeacher(b.dataset.tab); });
+  $$("[data-jump]", o).forEach(b => b.onclick = () => {
+    const j = b.dataset.jump;
+    if (!S.name) S.name = "Test"; if (!S.startedAt) S.startedAt = Date.now();
+    if (j === "pw" || j === "cert") { for (let i = 0; i < MAIN; i++) if (!S.done.includes(i)) S.done.push(i); S.phase = j === "pw" ? "password" : "cert"; if (j === "cert") S.pwOk = true; }
+    else { const t = +j; for (let i = 0; i < Math.min(t, MAIN); i++) if (!S.done.includes(i)) S.done.push(i); S.done = S.done.filter(i => i < t || (t === BONUS_IDX && i < MAIN)); S.lv = t; S.pz = 0; S.phase = "intro";
+      for (const k of Object.keys(S.solved).concat(Object.keys(S.hints), Object.keys(S.series))) if (+k.split("-")[0] >= t) { delete S.solved[k]; delete S.hints[k]; delete S.series[k]; }
+      if (t === BONUS_IDX) S.bonusDone = false; }
+    save(); o.remove(); render();
+  });
+  if ($("#tsolve")) $("#tsolve").onclick = () => { if (S.phase === "puzzle") { S.solved[S.lv + "-" + S.pz] = true; save(); } o.remove(); render(); };
+  if ($("#treset")) $("#treset").onclick = function () { if (!this.dataset.sure) { this.dataset.sure = 1; this.textContent = "Wirklich löschen? Nochmal tippen"; return; }
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { } S = freshState(); o.remove(); render(); };
+  if ($("#dgo")) { const go = () => { const r = decodeCode($("#dcode").value);
+      $("#dout").innerHTML = r ? `<div class="success">✔ <b>Gültig.</b> Rang: <b>${esc(r.rank)}</b> · ${r.total}/15 ★ · Bonus: ${r.bonus} ★<br>Sterne je Level: ${r.levels.map((s, i) => `L${i + 1}: ${s}`).join(" · ")}</div>`
+        : `<div class="feedback show hint">✘ Ungültiger Code (Tippfehler oder manipuliert).</div>`; };
+    $("#dgo").onclick = go; $("#dcode").onkeydown = e => { if (e.key === "Enter") go(); }; }
+}
+
+/* ---------- Start ---------- */
+load();
+if (S.phase !== "start" && S.phase !== "cert") { S.resumePhase = S.phase; S.phase = "start"; }
+render();
+
+/* Test-Schnittstelle (für automatische Tests; verändert nichts im Spiel) */
+window.__game = { get S() { return S; }, set S(v) { S = v; }, getPuzzle, optOk, LEVELS, levelStars, totalStars, rankFor, encodeCode, decodeCode, render, save, GEN, checkExpr, chooseVariant };
+</script>
+</body>
+</html>

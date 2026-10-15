@@ -1,0 +1,8 @@
+# Nur lokal (enthalten Lösungen/PIN oder sind Arbeitsmaterial)
+ANLEITUNG.md
+PLANUNG.md
+entwurf/
+screenshots/
+tests/testlauf.txt
+tests/*.png
+.DS_Store
