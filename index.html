@@ -1113,6 +1113,87 @@ COMP.explore = {
   }
 };
 
+/* --- Schild aufladen: Brüche addieren am 12er-Balken --- */
+COMP.charge = {
+  render(el, P) {
+    const PIECES = [2, 3, 4, 6, 12], W = 480, H = 52;
+    const tw = f => f[0] * 12 / f[1];                               // Bruch → Kästchen
+    let r = 0, bar = [];
+    const barSvg = (list, target, label) => {
+      const id = ++figId; let x = 0, s = "";
+      list.forEach((d, j) => { const w = 12 / d * W / 12;
+        s += `<rect x="${x}" y="0" width="${w}" height="${H}" fill="url(#p${j % 2 ? "o" : "b"}${id})" stroke="#eef3fb" stroke-width="3"/>`;
+        if (w >= 34) { const cx = x + w / 2;   // gestapelter Bruch 1/d
+          s += `<text x="${cx}" y="21" text-anchor="middle" font-size="17" font-weight="700" fill="#06121f">1</text><line x1="${cx - 11}" y1="27" x2="${cx + 11}" y2="27" stroke="#06121f" stroke-width="2.5"/><text x="${cx}" y="45" text-anchor="middle" font-size="17" font-weight="700" fill="#06121f">${d}</text>`; }
+        x += w; });
+      let grid = ""; for (let i = 1; i < 12; i++) grid += `<line x1="${i * W / 12}" y1="0" x2="${i * W / 12}" y2="${H}" stroke="#a9bddf" stroke-width="1" stroke-dasharray="3 4"/>`;
+      const tg = target ? `<line x1="${tw(target) * W / 12}" y1="-10" x2="${tw(target) * W / 12}" y2="${H + 10}" stroke="#ffab40" stroke-width="5"/><text x="${tw(target) * W / 12}" y="${H + 30}" text-anchor="middle" font-size="18" fill="#ffab40">🎯 Ziel</text>` : "";
+      return `<div class="fig"><svg viewBox="-4 -14 ${W + 8} ${H + 52}" style="width:min(${W}px,100%)" role="img" aria-label="${label || "Schild-Balken"}: ${list.reduce((a, d) => a + 12 / d, 0)} von 12 Kästchen gefüllt">${patDefs(id)}
+        <rect x="0" y="0" width="${W}" height="${H}" fill="${COL.empty}"/>${grid}${s}<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#a9bddf" stroke-width="3"/>${tg}</svg></div>`;
+    };
+    const sumBar = () => bar.reduce((a, d) => a + 12 / d, 0);
+    const plus = parts => parts.map(f => F(f[0], f[1])).join(" <span>+</span> ");
+    const palette = () => `<div class="row center keep" style="gap:8px">${PIECES.map(d => `<button class="btn keep piece" data-d="${d}" style="min-width:${Math.max(64, 12 / d * 26)}px;padding:6px 10px" aria-label="Stück ein ${d}tel dazulegen">${F(1, d)}</button>`).join("")}</div>
+      <div class="row center keep" style="margin-top:8px"><button class="btn small ghost keep" id="undo">↺ Stück weg</button><button class="btn small ghost keep" id="clr">Leeren</button></div>`;
+    const draw = () => {
+      const R = P.rounds[r];
+      let body = "";
+      if (R.kind === "build") body = `<p class="task">⚡ Lade den Schild <b>genau</b> bis zum Ziel: ${F(R.target[0], R.target[1])}</p>
+        <div id="bar">${barSvg(bar, R.target)}</div><div class="counter" aria-live="polite">Gefüllt: <b>${sumBar()}</b> von 12 Kästchen</div>${palette()}
+        <div class="row center" style="margin-top:10px"><button class="btn primary" id="chk">✔ Prüfen</button></div>`;
+      if (R.kind === "sum") body = `<p class="task">⚡ Lege die Stücke auf. Wie viel ist das <b>zusammen</b>?</p>
+        <div id="bar">${barSvg(bar)}</div><div class="counter" aria-live="polite">Gefüllt: <b>${sumBar()}</b> von 12 Kästchen</div>${palette()}
+        <div class="expr">${plus(R.parts)}<span>=</span><span class="ifrac">${numInput("z")}<span class="bar"></span>${numInput("n")}</span></div>
+        <div class="row center"><button class="btn primary" id="chk">✔ Prüfen</button></div>`;
+      if (R.kind === "compare") {
+        const L = R.left.flatMap(f => Array(f[0]).fill(f[1])), Rt = R.right.flatMap(f => Array(f[0]).fill(f[1]));
+        body = `<p class="task">⚡ Welcher Schild ist stärker?</p>
+          <div class="cmp">${plus(R.left)}</div>${barSvg(L, null, "Schild links")}
+          <div class="cmp">${plus(R.right)}</div>${barSvg(Rt, null, "Schild rechts")}
+          <div class="opts" style="margin-top:10px">${[["l", "⬆ Oben ist mehr."], ["eq", "＝ Beide gleich viel."], ["r", "⬇ Unten ist mehr."]].map(o => `<button class="opt" data-c="${o[0]}">${o[1]}</button>`).join("")}</div>`;
+      }
+      el.innerHTML = `<p class="muted" style="margin:.2em 0">${md(P.text)}</p>
+        <div class="progress" aria-label="Runde ${r + 1} von ${P.rounds.length}">${P.rounds.map((x, i) => `<i class="${i < r ? "on" : ""}"></i>`).join("")}</div>${body}`;
+      $$(".piece", el).forEach(b => b.onclick = () => {
+        const d = +b.dataset.d;
+        if (sumBar() + 12 / d > 12) { feedback($("#fb"), "hint", "Das passt nicht mehr in den Schild! Mehr als ein ganzer Balken geht nicht."); return; }
+        bar.push(d); $("#fb").className = "feedback"; redrawBar(); });
+      const u = $("#undo", el); if (u) u.onclick = () => { bar.pop(); redrawBar(); };
+      const c = $("#clr", el); if (c) c.onclick = () => { bar = []; redrawBar(); };
+      const next = () => { r++; bar = []; beep(true);
+        if (r >= P.rounds.length) { r = P.rounds.length - 1; draw(); solve(P); }
+        else { draw(); feedback($("#fb"), "good", "Richtig! Nächste Runde."); } };
+      const ck = $("#chk", el);
+      if (ck && R.kind === "build") ck.onclick = () => {
+        const s = sumBar(), t = tw(R.target), fb = $("#fb");
+        if (!bar.length) return feedback(fb, "hint", "Tippe auf die Stücke unten, um sie auf den Schild zu legen.");
+        if (s === t) return next();
+        feedback(fb, "hint", s > t ? `Zu viel! ${s} Kästchen – das Ziel ist bei ${t}. Nimm ein Stück weg.` : `Es fehlt noch etwas: ${s} Kästchen – das Ziel ist bei ${t}.`);
+      };
+      if (ck && R.kind === "sum") ck.onclick = () => {
+        const z = intOf($(".num.z", el)), n = intOf($(".num.n", el)), fb = $("#fb");
+        const t = R.parts.reduce((a, f) => a + tw(f), 0);
+        const naiveZ = R.parts.reduce((a, f) => a + f[0], 0), naiveN = R.parts.reduce((a, f) => a + f[1], 0);
+        if (!isNaN(z) && !isNaN(n) && n > 0 && eqFrac(z, n, t, 12)) return next();
+        if (z === naiveZ && n === naiveN) return feedback(fb, "hint", `Achtung: Zähler plus Zähler und Nenner plus Nenner geht nicht! ${F(naiveZ, naiveN)} ist sogar weniger als ${F(R.parts[0][0], R.parts[0][1])} allein. Lege die Stücke auf den Schild und zähle die Kästchen.`);
+        if (isNaN(z) || isNaN(n)) return feedback(fb, "hint", "Trage Zähler und Nenner ein. Tipp: Lege die Stücke auf und zähle die Kästchen.");
+        if (n === 12) return feedback(fb, "hint", `Zwölftel sind richtig! Zähle die gefüllten Kästchen noch einmal.`);
+        feedback(fb, "hint", "Lege beide Stücke auf den Schild. Wie viele der 12 Kästchen sind gefüllt? Das sind Zwölftel.");
+      };
+      $$(".opt[data-c]", el).forEach(b => b.onclick = () => {
+        const lt = R.left.reduce((a, f) => a + tw(f), 0), rt = R.right.reduce((a, f) => a + tw(f), 0);
+        const want = lt > rt ? "l" : lt < rt ? "r" : "eq";
+        if (b.dataset.c === want) return next();
+        b.classList.add("no");
+        feedback($("#fb"), "hint", `Vergleiche die Längen der gefüllten Balken. Zähle die Kästchen: oben ${lt}, unten ${rt}.`);
+      });
+    };
+    const redrawBar = () => { const R = P.rounds[r]; $("#bar", el).innerHTML = barSvg(bar, R.kind === "build" ? R.target : null);
+      $(".counter b", el).textContent = sumBar(); };
+    draw();
+  }
+};
+
 /* --- Ägyptische Brüche --- */
 COMP.egypt = {
   render(el, P) {

@@ -145,6 +145,18 @@ def check_math(L):
                         pass
                     fs = fracs_in(P["solution"])
                     ok(tag + ": Lösungstext rechnet richtig", fs[0] == Fr(z, n) and fs[1] == Fr(z, n) and (fs[1] == Fr(P["rz"], P["rn"])) == P["resultOk"])
+                elif t == "charge":
+                    for R in P["rounds"]:
+                        fs = [R["target"]] if R["kind"] == "build" else R.get("parts", []) + R.get("left", []) + R.get("right", [])
+                        ok(tag + f": Runde {R['kind']} – Nenner teilen 12", all(12 % f[1] == 0 for f in fs))
+                        if R["kind"] == "sum":
+                            tot = sum(Fr(*f) for f in R["parts"])
+                            ok(tag + f": Summe {tot} passt in den Balken", tot <= 1 and tot in fracs_in(P["solution"]))
+                        if R["kind"] == "compare":
+                            l, r = sum(Fr(*f) for f in R["left"]), sum(Fr(*f) for f in R["right"])
+                            word = "oben ist mehr" if l > r else "unten ist mehr" if l < r else "gleich viel"
+                            ok(tag + f": Vergleich {l} / {r} → „{word}“ im Lösungstext", word in P["solution"] and l <= 1 and r <= 1)
+                    ok(tag + ": kein „Stammbruch“ im Text", "Stammbruch" not in str(P))
                 elif t == "egypt":
                     sols = egypt_solutions(Fr(*P["target"]), P.get("terms", 2))
                     ok(tag + f": Zerlegung existiert ({len(sols)} Lösungen)", len(sols) >= P.get("need", 1))
@@ -229,6 +241,23 @@ def solve_ui(pg, P, use_drag=False):
         for s in P["screens"]:
             oi = [i for i, o in enumerate(s["options"]) if o.get("ok")][0]
             pg.click(f'#pbody .opt[data-o="{oi}"]')
+    elif t == "charge":
+        for R in P["rounds"]:
+            if R["kind"] == "build":
+                rest = R["target"][0] * 12 // R["target"][1]
+                for d in (2, 3, 4, 6, 12):
+                    while 12 // d <= rest:
+                        pg.click(f'#pbody .piece[data-d="{d}"]'); rest -= 12 // d
+                pg.click("#pbody #chk")
+            elif R["kind"] == "sum":
+                for f in R["parts"]:
+                    for _ in range(f[0]):
+                        pg.click(f'#pbody .piece[data-d="{f[1]}"]')
+                tot = sum(Fr(*f) for f in R["parts"])
+                pg.fill("#pbody .num.z", str(tot.numerator)); pg.fill("#pbody .num.n", str(tot.denominator)); pg.click("#pbody #chk")
+            else:
+                l, r = sum(Fr(*f) for f in R["left"]), sum(Fr(*f) for f in R["right"])
+                pg.click(f'#pbody .opt[data-c="{"l" if l > r else "r" if l < r else "eq"}"]')
     elif t == "egypt":
         sols = egypt_solutions(Fr(*P["target"]), P.get("terms", 2))
         need = P.get("need", 1)
@@ -313,6 +342,16 @@ def test_feedback_and_stars(pg):
     goto(pg, 2, 2, 0)  # 12/16
     fill(pg, None, [6, 8, 2]); pg.click("#pbody #chk")
     ok("Teilweise gekürzt → „noch gröber“", "gröber" in pg.inner_text("#fb"))
+
+    goto(pg, 4, 4, 0)  # Schild aufladen: Runde 1 lösen, dann Nenner addieren
+    for d in (2, 4):
+        pg.click(f'#pbody .piece[data-d="{d}"]')
+    pg.click("#pbody #chk")
+    pg.fill("#pbody .num.z", "2"); pg.fill("#pbody .num.n", "5"); pg.click("#pbody #chk")
+    ok("Schild: ½ + ⅓ = 2/5 → Hinweis „Nenner plus Nenner geht nicht“", "Nenner plus Nenner" in pg.inner_text("#fb"))
+    for d in (2, 2, 2):
+        pg.click(f'#pbody .piece[data-d="{d}"]')
+    ok("Schild: Überfüllen wird verhindert", "passt nicht mehr" in pg.inner_text("#fb"))
 
     # Tipps
     pg.evaluate("()=>{const s=__game.S; for(const k of Object.keys(s.hints)) delete s.hints[k];}")

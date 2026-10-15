@@ -477,28 +477,30 @@ const LEVELS = [
       ]
     },
     {
-      type: "sort", title: "Glitchs letzte Behauptungen",
-      text: "Glitch versucht einen letzten Trick. Prüfe jede Behauptung.",
-      bins: [ { id: "immer", label: "gilt immer" }, { id: "nie", label: "gilt nie" }, { id: "kommt", label: "kommt darauf an" } ],
-      pick: 5,
-      cards: [
-        { t: "Die Hälfte einer Pizza ist mehr als ein Viertel einer Pizza.", bin: "kommt", why: "Tim und Ana: Ein Viertel einer großen Pizza kann mehr sein als die Hälfte einer Mini-Pizza. Nur bei gleich großen Ganzen ist [[1/2]] mehr." },
-        { t: "Es gibt genau 9 Stammbrüche, die kleiner als [[1/10]] sind.", bin: "nie", why: "[[1/11]], [[1/12]], [[1/13]] … – es gibt unendlich viele." },
-        { t: "In der Folge [[1/2]], [[2/3]], [[3/4]], [[4/5]] … ist irgendwann ein Bruch gleich 1.", bin: "nie", why: "Der Zähler ist immer um 1 kleiner als der Nenner. Es fehlt immer genau ein Teil zum Ganzen." },
-        { t: "In der Folge [[1/2]], [[2/3]], [[3/4]], [[4/5]] … ist jeder Bruch größer als der davor.", bin: "immer", why: "Das fehlende Stück ([[1/2]], [[1/3]], [[1/4]] …) wird immer kleiner." },
-        { t: "Bei gleichem Zähler ist der Bruch mit dem kleineren Nenner größer.", bin: "immer", why: "Kleinerer Nenner = größere Teile, und es sind gleich viele." },
-        { t: "Ein Bruch mit größerem Zähler ist größer.", bin: "kommt", why: "Bei gleichem Nenner ja. Aber [[2/9]] < [[1/2]]." },
-        { t: "Zwischen [[1/3]] und [[1/2]] liegt kein Bruch.", bin: "nie", why: "Zum Beispiel [[5/12]]: [[4/12]] < [[5/12]] < [[6/12]]." }
+      type: "charge", title: "Schild aufladen",
+      text: "Glitchs letzter Angriff! Lade den Schild mit Energie-Stücken auf.",
+      /* Runden: build = Ziel genau treffen · sum = zusammenrechnen · compare = was ist mehr?
+         Brüche als [Zähler, Nenner]. Nenner müssen 12 teilen (2, 3, 4, 6, 12). */
+      variants: [
+        { rounds: [
+            { kind: "build", target: [3, 4] },
+            { kind: "sum", parts: [[1, 2], [1, 3]] },
+            { kind: "compare", left: [[1, 3], [1, 4]], right: [[1, 2]] } ],
+          solution: "[[3/4]] = 9 Kästchen, z. B. [[1/2]] + [[1/4]] (6 + 3). · [[1/2]] + [[1/3]] = 6 + 4 = 10 Kästchen = [[10/12]] = [[5/6]]. · [[1/3]] + [[1/4]] = 7 Kästchen, [[1/2]] = 6 Kästchen → oben ist mehr." },
+        { rounds: [
+            { kind: "build", target: [5, 6] },
+            { kind: "sum", parts: [[1, 4], [1, 6]] },
+            { kind: "compare", left: [[1, 2], [1, 6]], right: [[3, 4]] } ],
+          solution: "[[5/6]] = 10 Kästchen, z. B. [[1/2]] + [[1/3]] (6 + 4). · [[1/4]] + [[1/6]] = 3 + 2 = 5 Kästchen = [[5/12]]. · [[1/2]] + [[1/6]] = 8 Kästchen, [[3/4]] = 9 Kästchen → unten ist mehr." },
+        { rounds: [
+            { kind: "build", target: [7, 12] },
+            { kind: "sum", parts: [[1, 3], [1, 4]] },
+            { kind: "compare", left: [[1, 6], [1, 3]], right: [[1, 2]] } ],
+          solution: "[[7/12]] = 7 Kästchen, z. B. [[1/3]] + [[1/4]] (4 + 3). · [[1/3]] + [[1/4]] = 4 + 3 = 7 Kästchen = [[7/12]]. · [[1/6]] + [[1/3]] = 6 Kästchen = [[1/2]] → gleich viel." }
       ],
-      wrongToBin: {
-        immer: "Suche ein Gegenbeispiel! Denk an Tim und Ana oder an verschiedene Nenner.",
-        nie: "Gibt es doch einen Fall, in dem es stimmt?",
-        kommt: "Probiere mehrere Beispiele. Gibt es wirklich Fälle, in denen es stimmt UND Fälle, in denen nicht?"
-      },
-      solution: "Teste mit Beispielen und Gegenbeispielen.",
       hints: [
-        "Denk an Tim und Ana (zwei verschieden große Pizzen) und an die Streifen aus der System-Info.",
-        "Stammbrüche kleiner als [[1/10]]: [[1/11]], [[1/12]], … Hört das irgendwann auf?"
+        "Der Schild hat 12 Kästchen. Wie viele Kästchen ist jedes Stück? Lege es auf und zähle!",
+        "Beispiel: [[1/4]] + [[1/6]] → 3 Kästchen + 2 Kästchen = 5 Kästchen = [[5/12]]. Achtung: Die Nenner werden **nicht** addiert!"
       ]
     }
   ]
